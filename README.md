@@ -1,7 +1,7 @@
 # bangnet
 ### Using networks of LoRa devices to triangulate the source of loud bangs
 
-TODO(ted): GitHub Actions
+![Latest Build](https://github.com/tedski999/bangnet/actions/workflows/build.yml/badge.svg?branch=master&event=push)
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for tips on how to work on this project.
 
