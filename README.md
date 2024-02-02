@@ -1,5 +1,5 @@
 # bangnet
-### CS7NS2 Group Project - Using networks of LoRa devices to triangulate the source of loud bangs
+### Using networks of LoRa devices to triangulate the source of loud bangs
 
 TODO(ted): GitHub Actions
 
@@ -21,4 +21,5 @@ TODO(ted)
 
 ## References
 
-[GPLv3 License](LICENSE)
+Designed and implemented in partial fulfilment of coursework for [CS7NS2 Internet of Things](https://teaching.scss.tcd.ie/module/cs7ns2-internet-of-things/) \
+Licensed under [GPLv3](LICENSE)
