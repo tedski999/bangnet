@@ -13,7 +13,7 @@ def hello(request):
 @csrf_exempt
 def micro_record(request):
     try:
-        db_handler = DatabaseHandler('bangnet.db')
+        db_handler = DatabaseHandler('bangnet_cloud/bangnet.db')
         json_data = json.loads(request.body.decode('utf-8'))
 
         latitude = json_data.get("latitude")
