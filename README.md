@@ -1,6 +1,6 @@
 # bangnet
 
-![Latest Build](https://github.com/tedski999/bangnet/actions/workflows/build.yml/badge.svg?branch=master&event=push)
+![Latest Build](https://github.com/tedski999/bangnet/actions/workflows/firmware_build.yml/badge.svg?branch=master&event=push)
 
 Using networks of LoRa devices to triangulate the source of loud bangs. Designed and implemented in partial fulfilment of coursework for [CS7NS2 Internet of Things](https://teaching.scss.tcd.ie/module/cs7ns2-internet-of-things/).
 
