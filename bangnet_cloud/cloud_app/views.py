@@ -30,7 +30,8 @@ def micro_record(request):
             'statusCode': 200,
             'body': json.dumps({'message': f'Micro location uploaded successfully'}),
         }
-        send_to_telegram(f'Micro location uploaded successfully')
+        send_to_telegram(f'Micro location uploaded successfully: \n'
+                         f'latitude: {latitude} \n longitude: {longitude} \n micro_number: {micro_number} \n bang_time: {bang_time}')
     except KeyError as e:
         response = {
             'statusCode': 400,
