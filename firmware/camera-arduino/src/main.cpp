@@ -99,6 +99,8 @@ void setup() {
   Serial.println(WiFi.localIP());
 
   setupCamera();
+
+  Serial.println();  // newline
 }
 
 
@@ -147,6 +149,6 @@ void loop() {
   // Now the image has been uploaded, free the frame buffer so it can be used again
   esp_camera_fb_return(fb);
 
-  Serial.println("Waiting 5 seconds...");
+  Serial.println("Waiting 5 seconds before next picture...");
   delay(5000);
 }
