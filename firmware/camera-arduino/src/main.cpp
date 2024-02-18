@@ -66,12 +66,17 @@ void setupCamera() {
     config.jpeg_quality = 12;
     config.fb_count = 1;
   }
+
   // Camera init
   esp_err_t err = esp_camera_init(&config);
   if (err != ESP_OK) {
     Serial.printf("Camera init failed with error 0x%x", err);
     ESP.restart();
   }
+
+  sensor_t *sensor = esp_camera_sensor_get();
+  sensor->set_vflip(sensor, 1);
+
 }
 
 void setup() {
