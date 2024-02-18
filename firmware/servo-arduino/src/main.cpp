@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ESP32Servo.h>
+#include <ArduinoHttpClient.h>
 
 
 // WiFi settings
@@ -12,9 +13,11 @@ const char* password = "bluecow6";
 // TODO(cian): set this to the EC2 instance's IP address once image uploading is possible
 String serverAddress = "192.168.30.41";
 int serverPort = 8080;
-String serverPath = "/";
+String serverPath = "/servo";
 
-WiFiClient client;
+WiFiClient wifiClient;
+HttpClient httpClient = HttpClient(wifiClient, serverAddress, serverPort);
+
 int status = WL_IDLE_STATUS;
 
 // I just picked a random pin that seemed to be free, there wasn't any special method for picking this
@@ -53,13 +56,24 @@ void loop() {
   // I've tried giving it negative positions and positions above 180 and it
   // will stop moving after that.
 
-  // TODO(cian): fetch value from server and update `cameraServoPosition` with it
-  cameraServoPosition = (cameraServoPosition + 10) % 180;
+  httpClient.get(serverPath);
+  int statusCode = httpClient.responseStatusCode();
+  if (statusCode != 200) {
+    Serial.println("GET request to " + serverAddress + ":" + serverPort + serverPath + " failed");
+    Serial.println("Failed with status code " + statusCode);
+    delay(1000);
+    return;
+  }
+  
+  // read response from server and ensure it's within the bounds of [0, 180]
+  cameraServoPosition = httpClient.responseBody().toInt();
+  cameraServoPosition = max(cameraServoPosition, 0);
+  cameraServoPosition = min(cameraServoPosition, 180);
 
   Serial.print("Setting servo position to: ");
   Serial.println(cameraServoPosition);
   cameraServo.write(cameraServoPosition);
 
-  Serial.println("Waiting 1 second before next movement...");
-  delay(1000);
+  Serial.println("Waiting 5 seconds before next movement...");
+  delay(5000);
 }
