@@ -82,7 +82,7 @@ void setupCamera() {
 void setup() {
   Serial.begin(9600);
   Serial.print("Attempting to connect to network called: ");
-  Serial.println(ssid);                   // print the network name (SSID);
+  Serial.println(ssid); 
   WiFi.begin(ssid, password);
   while ( WiFi.status() != WL_CONNECTED) {
     Serial.print(".");
