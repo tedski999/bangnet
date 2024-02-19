@@ -15,11 +15,12 @@ jobs:
         with:
           submodules: 'recursive'
 
-        - uses: actions/cache@v3
-          with:
-            path: |
-              ~/esp-idf
-              ~/.espressif
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/esp-idf
+            ~/.espressif
+          key: ${{runner.os}}-idf
 
       - name: Install ESP-IDF
         run: |
