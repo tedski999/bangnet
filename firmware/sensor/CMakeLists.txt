@@ -1,3 +1,4 @@
-cmake_minimum_required(VERSION 3.16.0)
+cmake_minimum_required(VERSION 3.16)
 include($ENV{IDF_PATH}/tools/cmake/project.cmake)
+add_compile_definitions("SSD1306_NO_SPLASH")
 project(sensor)
