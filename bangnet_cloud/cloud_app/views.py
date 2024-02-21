@@ -15,6 +15,11 @@ from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser
+from pathlib import Path
+import os
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 def hello(request):
@@ -26,7 +31,7 @@ def index(request):
     image_files = os.listdir('media/uploads')
     image_data = []
     for filename in image_files:
-        image_url = '/media/uploads/' + filename
+        image_url = f'{BASE_DIR}/media/uploads/' + filename
         current_time = datetime.now()
         timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
         explosion_coord = "Get explosion coordinates from somewhere"  # Replace with actual coordinates
