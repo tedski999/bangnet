@@ -1,9 +1,6 @@
-import json
 import numpy as np
 from scipy.optimize import fsolve
 from pyproj import Proj
-import mysql.connector
-from mysql.connector import errorcode
 
 class TDoALocalization:
     def __init__(self, mics_coordinates, sound_speed=340, initial_guess=[1, 1], iterations=10, threshold=0.001):
@@ -31,21 +28,21 @@ class TDoALocalization:
         result = fsolve(self.equations, self.initial_guess, args=(delta_t_measured,))
         return result
 
-# # Example coordinates of microphones
-# mics_coordinates = [
-#     (-122.4194, 37.7749),  # Example longitude and latitude for microphone 1
-#     (-122.4184, 37.7756),  # Example longitude and latitude for microphone 2
-#     (-122.4171, 37.7765)   # Example longitude and latitude for microphone 3
-# ]
-#
-# # TDoA measurement values, adding some random noise to simulate uncertainty
-# delta_t_measured = [0.001 + np.random.normal(0, 0.0005) for _ in range(len(mics_coordinates))]
-#
-# # Creating an instance of the localization class
-# tdoa_localization = TDoALocalization(mics_coordinates)
-#
-# # Localizing
-# result = tdoa_localization.localize(delta_t_measured)
-#
-# # Outputting the result
-# print("Explosion source coordinates:", result)
+# Example coordinates of microphones
+mics_coordinates = [
+    (-122.4194, 37.7749),  # Example longitude and latitude for microphone 1
+    (-122.4184, 37.7756),  # Example longitude and latitude for microphone 2
+    (-122.4171, 37.7765)   # Example longitude and latitude for microphone 3
+]
+
+# TDoA measurement values, adding some random noise to simulate uncertainty
+delta_t_measured = [0.001 + np.random.normal(0, 0.0005) for _ in range(len(mics_coordinates))]
+
+# Creating an instance of the localization class
+tdoa_localization = TDoALocalization(mics_coordinates)
+
+# Localizing
+result = tdoa_localization.localize(delta_t_measured)
+
+# Outputting the result
+print("Explosion source coordinates:", result)

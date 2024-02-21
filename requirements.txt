@@ -5,3 +5,4 @@ scipy~=1.10.1
 pyproj~=3.5.0
 requests~=2.27.1
 djangorestframework~=3.14.0
+drf_yasg~=1.21.7
