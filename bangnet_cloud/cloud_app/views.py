@@ -17,6 +17,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.parsers import MultiPartParser
 from pathlib import Path
 import os
+from django.conf import settings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -28,14 +29,17 @@ def hello(request):
 
 
 def index(request):
-    image_files = os.listdir(f'{BASE_DIR}/media/uploads/')
+    media_path = os.path.join(settings.BASE_DIR, 'media', 'uploads')
+    image_files = os.listdir(media_path)
     image_data = []
+
     for filename in image_files:
-        image_url = f'{BASE_DIR}/media/uploads/' + filename
+        image_url = f'/media/uploads/{filename}'
         current_time = datetime.now()
         timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
         explosion_coord = "Get explosion coordinates from somewhere"  # Replace with actual coordinates
         image_data.append((image_url, timestamp, explosion_coord))
+
     return render(request, 'index.html', {'image_data': image_data})
 
 
