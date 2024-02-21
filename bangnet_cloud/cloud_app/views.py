@@ -28,7 +28,7 @@ def hello(request):
 
 
 def index(request):
-    image_files = os.listdir('media/uploads')
+    image_files = os.listdir(f'{BASE_DIR}/media/uploads/')
     image_data = []
     for filename in image_files:
         image_url = f'{BASE_DIR}/media/uploads/' + filename
