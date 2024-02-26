@@ -10,15 +10,27 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for tips on how to work on this project.
 
 ### Prerequisites
 
-TODO(ted)
-
-### Building
-
-TODO(ted)
+```sh
+git clone --recursive -b release/v5.1 https://github.com/espressif/esp-idf.git
+./esp-idf/install.sh esp32
+. ./esp-idf/export.sh
+```
 
 ### Running
 
-TODO(ted)
+```sh
+git clone --recursive https://github.com/tedski999/bangnet.git
+cd bangnet/firmware/sensor
+espsecure.py generate_signing_key --version 1 --scheme ecdsa256 secure_boot_signing_key.pem
+idf.py build
+```
+
+### Running
+
+```sh
+idf.py flash monitor
+# Ctrl-] to quit
+```
 
 ## References
 

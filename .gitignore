@@ -1,1 +1,5 @@
-/firmware/sensor/.pio
+/firmware/sensor/build
+/firmware/sensor/managed_components
+/firmware/sensor/sdkconfig
+/firmware/sensor/sdkconfig.old
+/firmware/sensor/secure_boot_signing_key.pem
