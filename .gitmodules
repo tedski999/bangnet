@@ -10,3 +10,6 @@
 [submodule "firmware/sensor/components/Adafruit_BusIO"]
 	path = firmware/sensor/components/Adafruit_BusIO
 	url = https://github.com/adafruit/Adafruit_BusIO
+[submodule "arduino"]
+	path = firmware/servo-espidf/components/arduino-esp32
+	url = git@github.com:espressif/arduino-esp32.git
