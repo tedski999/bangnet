@@ -63,7 +63,7 @@ def calculate_bearing(lat1, lon1, lat2, lon2):
 
     return compass_bearing
 
-def simulate_explosions(num_simulations, num_sensors, camera_coords, area_size=100):
+def simulate_explosions(num_simulations, num_sensors, area_size=100):
     # Simulate explosion events and localize the source based on sensor data
     estimated_positions = []
     true_positions = []
@@ -88,6 +88,9 @@ def simulate_explosions(num_simulations, num_sensors, camera_coords, area_size=1
         true_positions.append(explosion_source)
         estimated_positions.append(estimated_position)
 
+        # Generate random camera coordinates
+        camera_coords = np.random.rand(2) * area_size
+
         # Calculate the camera angle for each simulation
         camera_angle = calculate_bearing(camera_coords[0], camera_coords[1], estimated_position[0], estimated_position[1])
         camera_angles.append(camera_angle)
@@ -102,10 +105,8 @@ def simulate_explosions(num_simulations, num_sensors, camera_coords, area_size=1
     return np.mean(errors), np.std(errors), np.mean(camera_angles)
 
 # Run the simulation with specified parameters
-camera_coords = [50, 50]  # Example camera coordinates
-average_error, error_std, average_camera_angle = simulate_explosions(1000, 4, camera_coords)
+average_error, error_std, average_camera_angle = simulate_explosions(1000, 4)
 
 # Output the results of the simulation
 print(f"Average error: {average_error}")
 print(f"Error standard deviation: {error_std}")
-print(f"Average camera angle from North: {average_camera_angle} degrees")
