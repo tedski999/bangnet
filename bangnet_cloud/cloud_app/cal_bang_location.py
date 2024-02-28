@@ -117,11 +117,15 @@ def simulation():
 def usage():
     mics_coordinates = [(lat1, lon1), (lat2, lon2), ...]  
     temperature, humidity = get_environment_conditions()
-    initial_guess = [initial_x, initial_y]
+    #initial_guess = [initial_x, initial_y]
     delta_t_measured = [delta_t1, delta_t2, ...]  
-    localizer = TDoALocalization(mics_coordinates, temperature, humidity, initial_guess)
+    localizer = TDoALocalization(mics_coordinates, temperature, humidity)
     estimated_source_position = localizer.localize(delta_t_measured)
     print("Estimated source position:", estimated_source_position)
+    camera_lat = ...
+    camera_lon = ...
+    explosion_bearing = calculate_bearing(camera_lat, camera_lon, estimated_source_position[0], estimated_source_position[1])
+    print("Explosion bearing:", explosion_bearing)
 
 
 if __name__ == "__main__":
