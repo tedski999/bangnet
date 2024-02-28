@@ -104,9 +104,26 @@ def simulate_explosions(num_simulations, num_sensors, area_size=100):
 
     return np.mean(errors), np.std(errors), np.mean(camera_angles)
 
-# Run the simulation with specified parameters
-average_error, error_std, average_camera_angle = simulate_explosions(1000, 4)
 
-# Output the results of the simulation
-print(f"Average error: {average_error}")
-print(f"Error standard deviation: {error_std}")
+# Run the simulation with specified parameters
+def simulation():
+    average_error, error_std, average_camera_angle = simulate_explosions(1000, 4)
+
+    # Output the results of the simulation
+    print(f"Average error: {average_error}")
+    print(f"Error standard deviation: {error_std}")
+
+# usage
+def usage():
+    mics_coordinates = [(lat1, lon1), (lat2, lon2), ...]  
+    temperature, humidity = get_environment_conditions()
+    initial_guess = [initial_x, initial_y]
+    delta_t_measured = [delta_t1, delta_t2, ...]  
+    localizer = TDoALocalization(mics_coordinates, temperature, humidity, initial_guess)
+    estimated_source_position = localizer.localize(delta_t_measured)
+    print("Estimated source position:", estimated_source_position)
+
+
+if __name__ == "__main__":
+    #simulation()
+    usage()
