@@ -29,6 +29,22 @@ class TDoALocalization:
 
     def localize(self, delta_t_measured):
         # Use least_squares method to find the source position that minimizes the sum of squared residuals
+        if len(delta_t_measured) < 1:
+            print("Error: At least one microphone is required for localization.")
+            return None
+
+        if len(delta_t_measured) == 1:
+            tdoa_abs = delta_t_measured[0]
+            source_position_x = self.initial_guess[0] + tdoa_abs * self.sound_speed  
+            source_position_y = self.initial_guess[1]  
+            return source_position_x, source_position_y
+        
+        if len(delta_t_measured) == 2:
+            tdoa_abs = abs(delta_t_measured[0] - delta_t_measured[1])
+            source_position_x = self.initial_guess[0] + tdoa_abs * self.sound_speed / 2 
+            source_position_y = self.initial_guess[1]  
+            return source_position_x, source_position_y
+        
         result = least_squares(self.equations, self.initial_guess, args=(delta_t_measured,))
         return result.x  # The optimized source position
 
