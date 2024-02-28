@@ -4,8 +4,8 @@
 
 // WiFi settings
 // TODO: make this more general or read these from another file
-const char* ssid = ":house_with_garden:";
-const char* password = "bluecow6";
+const char* ssid = "Cian";
+const char* password = "12345678";
 
 // pinout for camera on ESP-EYE according to https://github.com/espressif/esp-who/blob/master/docs/en/Camera_connections.md
 #define PWDN_GPIO_NUM     -1
@@ -25,11 +25,10 @@ const char* password = "bluecow6";
 #define HREF_GPIO_NUM     27
 #define PCLK_GPIO_NUM     25
 
-// my pc, for now
-// TODO: set this to the EC2 instance's IP address once image uploading is possible
-String serverAddress = "192.168.30.41";
-int serverPort = 8080;
-String serverPath = "/";
+// API details for uploading the images to the EC2 instance
+String serverAddress = "34.241.234.234";
+int serverPort = 8000;
+String serverPath = "/api/upload_image/";
 
 WiFiClient client;
 int status = WL_IDLE_STATUS;
@@ -121,13 +120,21 @@ void loop() {
 
   // HTTP upload section adapted from https://randomnerdtutorials.com/esp32-cam-post-image-photo-server/
   if (client.connect(serverAddress.c_str(), serverPort)) {
-    Serial.println("Connection successful!");    
+    Serial.println("Connection successful!");
+
+    String head = "--ESP32ressoHTTPSeparator\r\nContent-Disposition: form-data; name=\"file\"; filename=\"esp32-cam.jpg\"\r\nContent-Type: image/jpeg\r\n\r\n";
+    String tail = "\r\n--ESP32ressoHTTPSeparator--\r\n";
+
+    uint32_t imageLen = fb->len;
+    uint32_t extraLen = head.length() + tail.length();
+    uint32_t totalLen = imageLen + extraLen;
 
     client.println("POST " + serverPath + " HTTP/1.1");
     client.println("Host: " + serverAddress);
-    client.println("Content-Length: " + String(fb->len));
-    client.println("Content-Type: multipart/form-data; boundary=RandomNerdTutorials");
+    client.println("Content-Length: " + String(totalLen));
+    client.println("Content-Type: multipart/form-data; boundary=ESP32ressoHTTPSeparator");
     client.println();
+    client.print(head);
 
     uint8_t *fbBuf = fb->buf;
     size_t fbLen = fb->len;
@@ -140,7 +147,10 @@ void loop() {
         size_t remainder = fbLen%1024;
         client.write(fbBuf, remainder);
       }
-    }   
+    }
+
+    client.print(tail);
+  
   }
   else {
     Serial.println("Couldn't connect to " + serverAddress);
