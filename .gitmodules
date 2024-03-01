@@ -10,3 +10,6 @@
 [submodule "firmware/sensor/components/Adafruit_BusIO"]
 	path = firmware/sensor/components/Adafruit_BusIO
 	url = https://github.com/adafruit/Adafruit_BusIO
+[submodule "firmware/sensor/components/arduino-LoRa"]
+	path = firmware/sensor/components/arduino-LoRa
+	url = https://github.com/sandeepmistry/arduino-LoRa

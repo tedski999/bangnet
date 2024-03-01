@@ -1,14 +1,13 @@
-#include "oled.hpp"
-#include "ntp.hpp"
-#include <Arduino.h>
-#include <WiFi.h>
+#include "main.hpp"
 #include <esp_log.h>
 #include <esp_ota_ops.h>
-#include <esp_pm.h>
 #include <Adafruit_SSD1306.h>
 #include <Adafruit_GFX.h>
 
 #define TAG "ESP32resso OLED"
+
+#define SHOW_MSEC 30000
+#define POLL_MSEC 50
 
 #define SDA 4
 #define SCL 15
@@ -16,85 +15,71 @@
 #define ADDR 0x3c
 #define WIDTH 128
 #define HEIGHT 64
+#define BUTTON_PIN 0
 
-#define DRAW_TIME_MSEC 50
+static void stub_timer(TimerHandle_t timer) {}
 
-static TimerHandle_t draw_timer;
-static TimerHandle_t hide_timer;
-static Adafruit_SSD1306 *oled = NULL;
-
-// Draw a new status frame on the OLED display
-static void on_draw_timeout(TimerHandle_t timer)
+void bnet_oled(void *raw_state)
 {
-	oled->clearDisplay();
-	oled->setCursor(0, 0);
+	ESP_LOGW(TAG, "Starting OLED display task...");
+	struct bnet_state *state = (struct bnet_state *) raw_state;
+	Adafruit_SSD1306 *oled = NULL;
+	TimerHandle_t timer = xTimerCreate("oled", SHOW_MSEC / portTICK_PERIOD_MS, false, NULL, stub_timer);
+	xTimerStart(timer, portMAX_DELAY);
+	pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-	// App version
-	const esp_app_desc_t *app_desc = esp_app_get_description();
-	oled->printf("V: %.16s\n", app_desc->version);
+	while (true) {
+		if (digitalRead(BUTTON_PIN) == 0) {
+			ESP_LOGI(TAG, "Button down, resetting timer...");
+			xTimerReset(timer, portMAX_DELAY);
+		}
 
-	// WiFi status
-	wl_status_t wifi_status = WiFi.status();
-	if (wifi_status == WL_STOPPED)
-		oled->printf("W: Disabled\n");
-	else if (wifi_status == WL_CONNECTED)
-		oled->printf("W: %.16s\n", WiFi.SSID().c_str());
-	else
-		oled->printf("W: Disconnected\n");
+		if (xTimerIsTimerActive(timer) && !oled) {
+			ESP_LOGW(TAG, "Enabling display...");
+			Wire.begin(SDA, SCL);
+			oled = new Adafruit_SSD1306(WIDTH, HEIGHT, &Wire, RST);
+			oled->begin(SSD1306_SWITCHCAPVCC, ADDR);
+			oled->setTextColor(SSD1306_WHITE);
+			digitalWrite(RST, HIGH);
+		} else if (!xTimerIsTimerActive(timer) && oled) {
+			ESP_LOGW(TAG, "Disabling display...");
+			digitalWrite(RST, LOW);
+			delete oled;
+			oled = NULL;
+			Wire.end();
+		}
 
-	// Power management status
-	esp_pm_config_t pm_config;
-	if (esp_pm_get_configuration(&pm_config) != ESP_OK) {
-		oled->printf("C: error\n");
-	} else if (pm_config.min_freq_mhz == 0 && pm_config.min_freq_mhz == 0) {
-		oled->printf("C: limits unset\n");
-	} else {
-		oled->printf("C: %d-%dMHz\n", pm_config.min_freq_mhz, pm_config.max_freq_mhz);
+		if (oled) {
+			oled->clearDisplay();
+			oled->setCursor(0, 0);
+			xSemaphoreTake(state->lock, portMAX_DELAY);
+
+			const esp_app_desc_t *app_desc = esp_app_get_description();
+			oled->printf("%llX %.8s\n", ESP.getEfuseMac(), app_desc->version);
+
+			if (state->is_connecting) {
+				oled->printf("Trying: " WIFI_SSID "\n");
+			} else {
+				oled->printf("WiFi: %.16s\n", state->is_gateway ? WIFI_SSID : "none");
+				oled->printf("OTA: %u\n", state->ota_progress);
+				oled->printf("Bangs: %u\n", state->bangs_detected);
+				oled->printf("Sound: %d\n", analogRead(MICROPHONE_PIN));
+				oled->printf("=> ");
+				if (state->esp_time_usec) {
+					uint64_t now = state->ntp_time_usec + esp_timer_get_time() - state->esp_time_usec;
+					double time_sec = now / (double) USECS_TO_SEC;
+					double frac_sec = time_sec - (int64_t) time_sec;
+					oled->printf("%f\n", time_sec);
+					oled->fillRect(0, oled->height() - 3, frac_sec * oled->width(), oled->height(), SSD1306_WHITE);
+				} else {
+					oled->printf("no sync\n");
+				}
+			}
+
+			xSemaphoreGive(state->lock);
+			oled->display();
+		}
+
+		delay(POLL_MSEC);
 	}
-
-	// NTP status
-	int64_t time_usec = bnet_ntp_time_usec();
-	if (time_usec != 0) {
-		double time_secs = time_usec / (double) USECS_TO_SEC;
-		double frac_secs = time_secs - (int64_t) time_secs;
-		oled->printf("T: NTP synchronised\n\n%f", time_secs);
-		oled->fillRect(0, oled->height() - 3, frac_secs * oled->width(), oled->height(), SSD1306_WHITE);
-	} else {
-		oled->printf("T: Clock unsynchronised");
-	}
-
-	oled->display();
-}
-
-// After set time has elapsed, power off the OLED display
-static void on_hide_timeout(TimerHandle_t timer)
-{
-	ESP_LOGI(TAG, "Disabling OLED display...");
-	xTimerStop(draw_timer, portMAX_DELAY);
-	digitalWrite(RST, LOW);
-	delete oled;
-	oled = NULL;
-	Wire.end();
-}
-
-// Light the OLED display for some time
-void bnet_oled_show(int duration_msec)
-{
-	ESP_LOGI(TAG, "Enabling OLED display...");
-
-	if (!draw_timer)
-		draw_timer = xTimerCreate("oled_draw_timer", DRAW_TIME_MSEC / portTICK_PERIOD_MS, true, NULL, on_draw_timeout);
-
-	if (!hide_timer)
-		hide_timer = xTimerCreate("oled_hide_timer", duration_msec / portTICK_PERIOD_MS, false, NULL, on_hide_timeout);
-
-	if (!oled) {
-		Wire.begin(SDA, SCL);
-		oled = new Adafruit_SSD1306(WIDTH, HEIGHT, &Wire, RST);
-		oled->begin(SSD1306_SWITCHCAPVCC, ADDR);
-		oled->setTextColor(SSD1306_WHITE);
-		xTimerStart(draw_timer, portMAX_DELAY);
-	}
-
-	xTimerReset(hide_timer, portMAX_DELAY);
 }
