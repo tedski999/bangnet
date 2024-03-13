@@ -2,51 +2,51 @@ import numpy as np
 from scipy.optimize import least_squares
 import requests
 
+
 class TDoALocalization:
     def __init__(self, mics_coordinates, temperature, humidity, initial_guess=[0, 0]):
-        # Initialize with microphone coordinates, ambient temperature and humidity, and an initial guess for the source position
-        self.mics_coordinates = mics_coordinates
-        self.temperature = temperature
-        self.humidity = humidity
-        self.sound_speed = self.calculate_sound_speed(temperature, humidity)  # Calculate initial sound speed
-        self.initial_guess = initial_guess
+        self.mics_coordinates = np.array(mics_coordinates)  # Convert microphone coordinates to NumPy array
+        self.temperature = temperature  # Store temperature
+        self.humidity = humidity  # Store humidity
+        self.sound_speed = self.calculate_sound_speed(temperature, humidity)  # Calculate sound speed
+        self.initial_guess = initial_guess  # Store initial guess for source position
 
     def calculate_sound_speed(self, temperature, humidity):
-        # Convert temperature from Kelvin to Celsius and calculate sound speed
+        # Convert temperature from Kelvin to Celsius
         temperature_celsius = temperature - 273.15
-        return 331.3 * np.sqrt(1 + temperature_celsius / 273.15) + 0.6 * humidity
+        # Update the formula for calculating sound speed
+        return 331.3 + (0.606 * humidity) + (0.0124 * temperature_celsius)
 
-    def equations(self, coordinates, delta_t_measured):
-        # Calculate residuals for each microphone based on the difference between predicted and actual distances
-        x, y = coordinates
-        residuals = []
-        for delta_t, (x_mic, y_mic) in zip(delta_t_measured, self.mics_coordinates):
-            predicted_distance = np.sqrt((x - x_mic)**2 + (y - y_mic)**2)
-            time_distance = self.sound_speed * delta_t
-            residual = predicted_distance - time_distance
-            residuals.append(residual)
-        return residuals
+    def equations(self, source_position, delta_t_measured):
+        lon, lat = source_position  # Extract longitude and latitude of the source position
+        residuals = []  # List to store residuals
+        for i, (lon_mic, lat_mic) in enumerate(self.mics_coordinates):
+            distance = haversine(lon_mic, lat_mic, lon, lat)  # Calculate distance between microphone and source
+            predicted_time = distance / self.sound_speed  # Predicted time for sound wave to travel
+            if i > 0:
+                measured_time_diff = delta_t_measured[i - 1]  # Measured time difference
+                # Predicted time difference from reference microphone to current microphone
+                predicted_time_diff = predicted_time - (haversine(self.mics_coordinates[0][1], self.mics_coordinates[0][0], lon, lat) / self.sound_speed)
+                residuals.append(predicted_time_diff - measured_time_diff)  # Calculate and store residual
+        return residuals  # Return list of residuals
 
-    def localize(self, delta_t_measured):
-        # Use least_squares method to find the source position that minimizes the sum of squared residuals
-        if len(delta_t_measured) < 1:
-            print("Error: At least one microphone is required for localization.")
-            return None
+    def localize(self, timestamps):
+        result = least_squares(self.equations, self.initial_guess, args=(timestamps,))  # Perform least squares optimization
+        return result.x  # Return optimized source position
 
-        if len(delta_t_measured) == 1:
-            tdoa_abs = delta_t_measured[0]
-            source_position_x = self.initial_guess[0] + tdoa_abs * self.sound_speed  
-            source_position_y = self.initial_guess[1]  
-            return source_position_x, source_position_y
-        
-        if len(delta_t_measured) == 2:
-            tdoa_abs = abs(delta_t_measured[0] - delta_t_measured[1])
-            source_position_x = self.initial_guess[0] + tdoa_abs * self.sound_speed / 2 
-            source_position_y = self.initial_guess[1]  
-            return source_position_x, source_position_y
-        
-        result = least_squares(self.equations, self.initial_guess, args=(delta_t_measured,))
-        return result.x  # The optimized source position
+
+def haversine(lon1, lat1, lon2, lat2):
+    # Convert coordinates to radians
+    lon1, lat1, lon2, lat2 = map(np.radians, [lon1, lat1, lon2, lat2])
+
+    # Haversine formula
+    dlon = lon2 - lon1
+    dlat = lat2 - lat1
+    a = np.sin(dlat/2)**2 + np.cos(lat1) * np.cos(lat2) * np.sin(dlon/2)**2
+    c = 2 * np.arcsin(np.sqrt(a))
+    r = 6371000  # Earth radius in meters
+    return c * r  # Return haversine distance
+
 
 def get_environment_conditions():
     # Fetch current environmental conditions from an external API using an API key stored in an environment variable
