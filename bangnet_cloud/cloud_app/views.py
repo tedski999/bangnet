@@ -88,16 +88,22 @@ def handle_upload(request):
 @csrf_exempt
 @swagger_auto_schema(
     methods=['GET'],
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        required=['micro_number', 'bang_time'],
-        properties={
-            # 'latitude': openapi.Schema(type=openapi.TYPE_NUMBER),
-            # 'longitude': openapi.Schema(type=openapi.TYPE_NUMBER),
-            'micro_number': openapi.Schema(type=openapi.TYPE_NUMBER),
-            'bang_time': openapi.Schema(type=openapi.TYPE_NUMBER),
-        },
-    ),
+    manual_parameters=[
+        openapi.Parameter(
+            name='micro_number',
+            in_=openapi.IN_QUERY,
+            type=openapi.TYPE_NUMBER,
+            required=True,
+            description='Micro number parameter',
+        ),
+        openapi.Parameter(
+            name='bang_time',
+            in_=openapi.IN_QUERY,
+            type=openapi.TYPE_NUMBER,
+            required=True,
+            description='Bang time parameter',
+        ),
+    ],
     responses={200: 'Micro location uploaded successfully', 400: 'Bad Request'}
 )
 @api_view(['GET'])
@@ -132,13 +138,15 @@ def micro_record(request):
 @csrf_exempt
 @swagger_auto_schema(
     methods=['GET'],
-    request_body=openapi.Schema(
-        type=openapi.TYPE_OBJECT,
-        required=['camera_id'],
-        properties={
-            'camera_id': openapi.Schema(type=openapi.TYPE_NUMBER)
-        },
-    ),
+    manual_parameters=[
+        openapi.Parameter(
+            name='camera_id',
+            in_=openapi.IN_QUERY,
+            type=openapi.TYPE_INTEGER,
+            required=True,
+            description='Camera ID parameter',
+        ),
+    ],
     responses={200: 'Get camera angle successfully', 400: 'Bad Request'}
 )
 @api_view(['GET'])
