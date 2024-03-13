@@ -1,6 +1,4 @@
 import time
-import os
-from django.http import JsonResponse
 import json
 from database_handler import DatabaseHandler
 from chat_bot import send_to_telegram
@@ -11,10 +9,7 @@ from django.shortcuts import render
 from datetime import datetime
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
-from rest_framework.response import Response
-from rest_framework.decorators import api_view, permission_classes, parser_classes
-from rest_framework.permissions import AllowAny
-from rest_framework.parsers import MultiPartParser
+from rest_framework.decorators import api_view
 from pathlib import Path
 import os
 from django.conf import settings
