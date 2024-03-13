@@ -119,8 +119,6 @@ def micro_record(request):
             'statusCode': 200,
             'body': json.dumps({'message': f'Micro location uploaded successfully'}),
         }
-        send_to_telegram(f'Micro location uploaded successfully: \n'
-                         f'micro_number: {micro_number} \n bang_time: {bang_time}')
         occur_bang()
     except KeyError as e:
         response = {
@@ -223,6 +221,11 @@ def occur_bang():
         db_handler.insert_data('camera', (None, explosion_bearing))
         print("Explosion bearing:", explosion_bearing)
         db_handler.delete_all_data('micros')
+        send_to_telegram(
+            f"micros_bang_time_result: {micros_bang_time_result}\n"
+            f"mics_coordinates: {mics_coordinates}\n"
+            f'Estimated source position: {estimated_source_position}\n'
+            f'Explosion bearing: {explosion_bearing}')
     except Exception as e:
         print(f"cal occur_bang error: {e}")
 
