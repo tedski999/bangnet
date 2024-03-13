@@ -29,11 +29,18 @@ class DatabaseHandler:
         self.cursor.execute(query)
         self.conn.commit()
 
-    def select_data(self, table_name, columns=None, condition=None):
+    def delete_all_data(self, table_name):
+        query = f"DELETE FROM {table_name}"
+        self.cursor.execute(query)
+        self.conn.commit()
+
+    def select_data(self, table_name, columns=None, condition=None, order_by=None):
         columns_str = ', '.join(columns) if columns else '*'
         query = f"SELECT {columns_str} FROM {table_name}"
         if condition:
             query += f" WHERE {condition}"
+        if order_by:
+            query += f" ORDER BY {order_by} DESC"
         self.cursor.execute(query)
         return self.cursor.fetchall()
 
