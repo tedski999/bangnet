@@ -226,7 +226,7 @@ def occur_bang():
         camera_lon = camera_address.longitude
         explosion_bearing = calculate_bearing(camera_lat, camera_lon, estimated_source_position[0],
                                               estimated_source_position[1])
-        db_handler.insert_data('camera', (None, explosion_bearing))
+        db_handler.insert_data('camera', (0, explosion_bearing))
         print("Explosion bearing:", explosion_bearing)
         db_handler.delete_all_data('micros')
         send_to_telegram(
