@@ -3,6 +3,7 @@
 # Ignore Python cache directories
 __pycache__/
 bangnet_cloud/__pycache__/
+bangnet_cloud/cloud_app/__pycache__/
 bangnet_cloud/db_opera.py
 bangnet_cloud/.DS_Store
 .idea/
