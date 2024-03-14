@@ -8,3 +8,4 @@ bangnet_cloud/db_opera.py
 bangnet_cloud/.DS_Store
 .idea/
 .DS_Store
+/firmware/sensor/.pio
