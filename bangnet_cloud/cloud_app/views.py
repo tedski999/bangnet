@@ -57,17 +57,15 @@ def hello(request):
 
 
 def index(request):
-    media_path = os.path.join(settings.BASE_DIR, 'media', 'uploads')
-    image_files = os.listdir(media_path)
+    db_handler = DatabaseHandler('bangnet_cloud/bangnet.db')
+    result = db_handler.select_data('bang_incidents', columns=['id', 'bang_position', 'image_url', 'bang_time'])
     image_data = []
-
-    for filename in image_files:
-        image_url = f'/media/uploads/{filename}'
-        current_time = datetime.now()
-        timestamp = current_time.strftime("%Y-%m-%d %H:%M:%S")
-        explosion_coord = "Get explosion coordinates from somewhere"  # Replace with actual coordinates
+    for row in result:
+        image_url = f"/media/{row[2]}"
+        timestamp = row[3]
+        explosion_coord = row[1]
         image_data.append((image_url, timestamp, explosion_coord))
-
+        print(image_url)
     return render(request, 'index.html', {'image_data': image_data})
 
 
