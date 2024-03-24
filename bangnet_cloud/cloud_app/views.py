@@ -61,7 +61,7 @@ def index(request):
     result = db_handler.select_data('bang_incidents', columns=['id', 'bang_position', 'image_url', 'bang_time'])
     image_data = []
     for row in result:
-        image_url = f"/media/{row[2]}"
+        image_url = f"/media/uploads/{row[2]}"
         timestamp = row[3]
         explosion_coord = row[1]
         image_data.append((image_url, timestamp, explosion_coord))
@@ -265,8 +265,9 @@ def get_micros_bang_time(db_handler):
 
 def get_lasted_image_uploaded(db_handler):
     result = db_handler.select_data('bang_image', columns=['image_url', 'upload_time'])
-    return result[len(result) - 1][0]
-
+    split_result = result[len(result) - 1][0]
+    image_name = split_result.split('/')
+    return image_name[len(image_name) - 1]
 
 def get_micros_address(mirco_nums):
     #result = db_handler.select_data('micros', columns=['id', 'micro_number', 'bang_time'])
