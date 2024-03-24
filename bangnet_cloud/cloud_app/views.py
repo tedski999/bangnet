@@ -226,7 +226,12 @@ def occur_bang():
         camera_lon = camera_address.longitude
         explosion_bearing = calculate_bearing(camera_lat, camera_lon, estimated_source_position[0],
                                               estimated_source_position[1])
+        db_handler.delete_all_data('camera')
         db_handler.insert_data('camera', (0, explosion_bearing))
+        bang_image_url = get_lasted_image_uploaded(db_handler)
+        current_time = datetime.now()
+        formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
+        db_handler.insert_data('bang_incidents', (None, f"{estimated_source_position[0]}, {estimated_source_position[1]}", bang_image_url, formatted_time))
         print("Explosion bearing:", explosion_bearing)
         db_handler.delete_all_data('micros')
         send_to_telegram(
@@ -247,6 +252,22 @@ def get_micros_bang_time(db_handler):
             target_result.append(row[2])
             contain_id.add(row[1])
     return target_result
+
+
+def get_micros_bang_time(db_handler):
+    contain_id = set()
+    target_result = []
+    result = db_handler.select_data('micros', columns=['id', 'micro_number', 'bang_time'])
+    for row in result:
+        if row[1] not in contain_id:
+            target_result.append(row[2])
+            contain_id.add(row[1])
+    return target_result
+
+
+def get_lasted_image_uploaded(db_handler):
+    result = db_handler.select_data('bang_image', columns=['image_url', 'upload_time'])
+    return result[len(result) - 1][0]
 
 
 def get_micros_address(mirco_nums):
