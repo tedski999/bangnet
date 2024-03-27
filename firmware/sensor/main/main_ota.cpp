@@ -8,10 +8,7 @@
 #include <esp_timer.h>
 #include <lwip/netdb.h>
 
-bool is_updating = false;
-extern "C" {
 #include "delta.h"
-}
 
 #define TAG "ESP32resso"
 
@@ -44,8 +41,8 @@ extern "C" {
 
 #define SYNC_MSEC (10 * MSECS_TO_SEC)
 
-#define PING_MIN_MSEC (20 * MSECS_TO_SEC)
-#define PING_MAX_MSEC (30 * MSECS_TO_SEC)
+#define PING_MIN_MSEC (60 * MSECS_TO_SEC)
+#define PING_MAX_MSEC (120 * MSECS_TO_SEC)
 
 #define BANG_POLL_MSEC (200)
 #define BANG_COOLDOWN_MSEC (500)
@@ -54,7 +51,8 @@ extern "C" {
 #define WIFI_SSID "msungie"
 #define WIFI_PSWD "hamandcheese"
 
-#define OTA_HOST "192.168.125.134"
+// DEBUG: Run `python3 -m http.server` in /firmware/sensor directory with OTA_HOST set to your IP address
+#define OTA_HOST "192.168.19.134"
 #define OTA_PORT (8080)
 #define OTA_CAP (16)
 
@@ -83,6 +81,8 @@ static uint16_t bangs_detected = 0; // How many bangs has the microphone detecte
 static QueueHandle_t ota_queue = NULL; // OTA chunks yet to be broadcasted
 static uint64_t ota_version = 0; // Firmware version OTA chunks apply to
 static const uint64_t ota_term[2] = { 0x1832809, 0x9873412 }; // Special values to designate the end of an OTA
+static const esp_partition_t *ota_partition = NULL; // In-progress OTA context
+static esp_ota_handle_t ota_handle; // In-progress OTA data context
 static uint64_t version = * (uint64_t *) esp_app_get_description()->app_elf_sha256; // Firmware version
 static uint64_t chip_id = ESP.getEfuseMac(); // Unique ID for sensor
 
@@ -114,19 +114,20 @@ void lora_read(int packet_len)
 // Apply OTA chunk
 static void ota_write(uint64_t *ota, int ota_len)
 {
-	int err;
+	esp_err_t err;
 	bool is_finished = false;
-	delta_opts_t opts = INIT_DEFAULT_DELTA_OPTS();
-	delta_partition_writer_t writer;
 
-	if (!is_updating) {
-		is_updating = true;
+	if (!ota_partition) {
 		ESP_LOGE(TAG " OTA", "Updating firmware...");
+		if (!(ota_partition = esp_ota_get_next_update_partition(NULL))) {
+			ESP_LOGE(TAG " OTA", "Unable to find valid OTA partition to use");
+			goto end0;
+		}
 		LoRa.idle(); // hack to fix lora library mishandling interrupts while flash is occupied
-		bool foo = delta_partition_init(&writer, opts.patch, 100000);
+		err = esp_ota_begin(ota_partition, OTA_SIZE_UNKNOWN, &ota_handle);
 		LoRa.receive(sizeof (struct lora_packet));
-		if (foo != ESP_OK) {
-			ESP_LOGE(TAG " OTA", "Unable to init OTA");
+		if (err != ESP_OK) {
+			ESP_LOGE(TAG " OTA", "Unable to start OTA");
 			goto end0;
 		}
 		ota_progress = 0;
@@ -140,18 +141,23 @@ static void ota_write(uint64_t *ota, int ota_len)
 
 	if (ota_len) {
 		ESP_LOGW(TAG " OTA", "Writing OTA chunk...");
-		if (delta_partition_write(&writer, (char *) ota, ota_len * sizeof (uint64_t)) != ESP_OK) {
+		// TODO(now): delta updates
+		if ((err = esp_ota_write(ota_handle, ota, ota_len * sizeof *ota)) != ESP_OK) {
 			ESP_LOGE(TAG " OTA", "Unable to write OTA chunk");
-			goto end0;
+			goto end1;
 		}
+		if (false) goto end1;
 		ota_progress += ota_len;
 	}
 
 	if (is_finished) {
 		ESP_LOGE(TAG " OTA", "OTA update complete.");
-		err = delta_check_and_apply(100000, &opts);
-		if (err) {
-			ESP_LOGE(TAG " OTA", "Unable to complete OTA: %s", delta_error_as_string(err));
+		if ((err = esp_ota_end(ota_handle)) != ESP_OK) {
+			ESP_LOGE(TAG " OTA", "Unable to validate OTA");
+			goto end0;
+		}
+		if ((err = esp_ota_set_boot_partition(ota_partition)) != ESP_OK) {
+			ESP_LOGE(TAG " OTA", "Unable to set OTA boot partition");
 			goto end0;
 		}
 		ESP_LOGE(TAG " OTA", "Rebooting into new firmware...");
@@ -160,8 +166,11 @@ static void ota_write(uint64_t *ota, int ota_len)
 
 	return;
 
+end1:
+	if ((err = esp_ota_abort(ota_handle)) != ESP_OK)
+		ESP_LOGE(TAG " OTA", "Unable to gracefully abort OTA");
 end0:
-	is_updating = false;
+	ota_partition = NULL;
 	ota_progress = 0;
 }
 
@@ -269,7 +278,6 @@ static void ping_task(void *arg)
 	ESP_LOGW(TAG " PING", "Starting ping task...");
 
 	while (true) {
-		delay(random(PING_MIN_MSEC, PING_MAX_MSEC));
 		xSemaphoreTake(lock, portMAX_DELAY);
 		ESP_LOGW(TAG " PING", "Performing occasional ping...");
 		if (is_gateway) {
@@ -284,6 +292,7 @@ static void ping_task(void *arg)
 			LoRa.receive(sizeof (struct lora_packet));
 		}
 		xSemaphoreGive(lock);
+		delay(random(PING_MIN_MSEC, PING_MAX_MSEC));
 	}
 }
 
@@ -331,7 +340,7 @@ static void gateway_get_task(void *arg)
 		}
 
 		ESP_LOGW(TAG " GET", "Streaming OTA for version %llX via sync windows...", ota_version);
-		while (read_len < content_len) {
+		while (!esp_http_client_is_complete_data_received(http_handle)) {
 			int64_t len = 0, ota_len = 0;
 			uint64_t ota[128] = {};
 			if ((len = esp_http_client_read(http_handle, (char *) ota, sizeof ota)) < 0) {
@@ -342,7 +351,7 @@ static void gateway_get_task(void *arg)
 			ota_len = (len + sizeof (int64_t) - 1) / sizeof (int64_t);
 			ESP_LOGI(TAG " GET", "New OTA chunks: %lld (%lld bytes, %lld/%lld)", ota_len, len, read_len, content_len);
 			for (int i = 0; i < ota_len; i += 2)
-				xQueueSend(ota_queue, ota + i, portMAX_DELAY); // TODO(fix): missing part?
+				xQueueSend(ota_queue, ota + i, portMAX_DELAY);
 		}
 
 		ESP_LOGW(TAG " GET", "Streaming of OTA for version %llX complete.", ota_version);
