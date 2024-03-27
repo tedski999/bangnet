@@ -13,3 +13,6 @@
 [submodule "firmware/sensor/components/arduino-LoRa"]
 	path = firmware/sensor/components/arduino-LoRa
 	url = https://github.com/sandeepmistry/arduino-LoRa
+[submodule "firmware/sensor/components/esp32_compressed_delta_ota_update"]
+	path = firmware/sensor/components/esp32_compressed_delta_ota_update
+	url = git@github.com:ESP32-Musings/esp32_compressed_delta_ota_update.git
