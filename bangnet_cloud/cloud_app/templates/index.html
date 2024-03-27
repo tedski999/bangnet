@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Display</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f4;
+        }
+
+        header {
+            background-color: #333;
+            color: #fff;
+            padding: 10px;
+            text-align: center;
+        }
+
+        section {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            height: 80vh;
+            padding: 20px;
+        }
+
+        .image-container {
+            margin: 10px;
+            max-width: 200px;
+            max-height: 300px;
+            text-align: center;
+        }
+
+        .image-container img {
+            max-width: 100%;
+            max-height: 100%;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .image-info {
+            margin-top: 10px;
+            font-size: 12px;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Bang Net Image Display</h1>
+    </header>
+
+    <section>
+        {% for image_url, timestamp, explosion_coord in image_data %}
+            <div class="image-container">
+                <img src="{{ image_url }}" alt="Image">
+                <div class="image-info">
+                    <p>Timestamp: {{ timestamp }}</p>
+                    <p>Explosion Coordinates: {{ explosion_coord }}</p>
+                </div>
+            </div>
+        {% endfor %}
+    </section>
+</body>
+</html>

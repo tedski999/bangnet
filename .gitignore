@@ -1,5 +1,21 @@
+# Ignore .pyc files
+*.pyc
+# Ignore Python cache directories
+__pycache__/
+bangnet_cloud/__pycache__/
+bangnet_cloud/cloud_app/__pycache__/
+bangnet_cloud/db_opera.py
+bangnet_cloud/.DS_Store
+.idea/
+.DS_Store
 /firmware/sensor/build
 /firmware/sensor/managed_components
 /firmware/sensor/sdkconfig
 /firmware/sensor/sdkconfig.old
 /firmware/sensor/secure_boot_signing_key.pem
+
+/firmware/servo-espidf/build
+/firmware/servo-espidf/managed_components
+/firmware/servo-espidf/sdkconfig
+/firmware/servo-espidf/sdkconfig.old
+/firmware/servo-espidf/secure_boot_signing_key.pem
