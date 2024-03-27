@@ -12,23 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
 
       - uses: actions/cache@v3
         with:
           path: |
-            ~/.cache/pip
-            ~/.platformio/.cache
-          key: ${{runner.os}}-pio
+            ~/esp-idf
+            ~/.espressif
+          key: ${{runner.os}}-idf
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.9'
-
-      - name: Install PlatformIO Core
-        run: pip install --upgrade platformio
+      - name: Install ESP-IDF
+        run: |
+            [ -d ~/esp-idf ] || git clone --recursive -b release/v5.1 https://github.com/espressif/esp-idf.git ~/esp-idf
+            ~/esp-idf/install.sh esp32
 
       - name: Build Sensor Firmware
-        run: pio ci --project-conf firmware/sensor/platformio.ini firmware/sensor
+        run: |
+          . ~/esp-idf/export.sh
+          espsecure.py generate_signing_key --version 1 --scheme ecdsa256 firmware/sensor/secure_boot_signing_key.pem
+          idf.py --project-dir firmware/sensor build
 
       - name: Build Camera Firmware
         run: echo TODO
