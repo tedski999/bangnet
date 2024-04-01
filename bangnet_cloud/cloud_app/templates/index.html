@@ -16,14 +16,14 @@
             background-color: #333;
             color: #fff;
             padding: 10px;
-            text-align: center;
+            text-align: left;
         }
 
         section {
             display: flex;
             flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
+            justify-content: left;
+            align-items: left;
             height: 80vh;
             padding: 20px;
         }
@@ -32,7 +32,7 @@
             margin: 10px;
             max-width: 200px;
             max-height: 300px;
-            text-align: center;
+            text-align: left;
         }
 
         .image-container img {
@@ -47,23 +47,155 @@
             font-size: 12px;
             color: #555;
         }
+        .collapsible {
+            background-color: #777;
+            color: white;
+            cursor: pointer;
+            padding: 18px;
+            width: 100%;
+            border: none;
+            text-align: left;
+            outline: none;
+            font-size: 15px;
+            }
+
+            .active, .collapsible:hover {
+            background-color: #555;
+            }
+
+            .content {
+            padding: 0 18px;
+            display: none;
+            overflow: hidden;
+            background-color: #f1f1f1;
+            }
+        .custom-field {
+            position: relative;
+            font-size: 14px;
+            padding-top: 20px;
+            margin-bottom: 5px;
+        }
+
+        .custom-field input {
+                border: none;
+                -webkit-appearance: none;
+                appearance: none;
+                background: #ecd7b8;
+                padding: 12px;
+                border-radius: 3px;
+                width: 250px;
+                outline: none;
+                width: 50%;
+            }
+        
+        .custom-field .placeholder {
+            position: absolute;
+            left: 12px;
+            top: calc(50% + 20px);
+            transform: translateY(-100%);
+            color: #aaa;
+            transition: 
+                top 0.3s ease,
+                font-size 0.3s ease,
+                color 0.3s ease;
+
+        }
+
+        .custom-field input:valid + .placeholder,
+        .custom-field input:focus + .placeholder {
+            top: 10px;
+            font-size: 20px;
+            color: #222;
+        }
+        .button {
+            background-color: #04AA6D; /* Green */
+            border: none;
+            color: #ecd7b8;
+            padding: 16px 32px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            transition-duration: 0.4s;
+            cursor: pointer;
+            }
+            .button2 {
+                background-color: #ecd7b8; 
+                color: black; 
+                border: 2px solid #ecd7b8;
+                }
+
+                .button2:hover {
+                background-color: #d66c15;
+                color: white;
+                }
     </style>
 </head>
 <body>
-    <header>
-        <h1>Bang Net Image Display</h1>
+    <header style="text-align: left;">
+        <img src="/media/logo/logo3.webp" width="75" height="75" alt="Image" style="border-radius: 15px; display: inline-block; vertical-align: middle;">
+        <h1 style="display: inline-block; vertical-align: middle; margin: 0; padding-left: 25px;">Bang Net Image Display</h1>
     </header>
-
-    <section>
-        {% for image_url, timestamp, explosion_coord in image_data %}
-            <div class="image-container">
-                <img src="{{ image_url }}" alt="Image">
-                <div class="image-info">
-                    <p>Timestamp: {{ timestamp }}</p>
-                    <p>Explosion Coordinates: {{ explosion_coord }}</p>
-                </div>
+    <div style="padding: 25px;">
+        <form id="myForm">
+            <label class="custom-field" >
+                <input type="text" required/>
+                <span class="placeholder">Longitude</span>
+            </label>
+            <div style="padding-top: 25px; padding-bottom: 25px;">
+                <label class="custom-field" >
+                    <input type="text" required/>
+                    <span class="placeholder">Latitude</span>
+                </label>
             </div>
-        {% endfor %}
+            <!-- <input type="text" placeholder="Enter Text"/> -->
+            <button class="button button2" type="button" onclick="clearInputs()">Set New Mic</button>
+        </form>
+    </div>
+    <section>
+            {% for image_url, timestamp, explosion_coord in image_data %}
+                <div class="image-container">
+                    <button type="button" class="collapsible">Display Image</button>
+                    <div class="content">
+                        <img src="{{ image_url }}" alt="Image">
+                        <div class="image-info">
+                            <p>Timestamp: {{ timestamp }}</p>
+                            <p>Coord: {{ explosion_coord }}</p>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
     </section>
+
+
+    <script>
+        var coll = document.getElementsByClassName("collapsible");
+        var i;
+        
+        for (i = 0; i < coll.length; i++) {
+          coll[i].addEventListener("click", function() {
+            this.classList.toggle("active");
+            var content = this.nextElementSibling;
+            if (content.style.display === "block") {
+              content.style.display = "none";
+            } else {
+              content.style.display = "block";
+            }
+          });
+        }
+        </script>
+
+    <script>
+        function clearInputs() {
+            // Select the form by its ID
+            var form = document.getElementById('myForm');
+            // Find all input fields within the form and clear them
+            var inputs = form.getElementsByTagName('input');
+            for (var i = 0; i < inputs.length; i++) {
+                inputs[i].value = ''; // Clear the input
+            }
+        }
+    </script>
 </body>
 </html>
