@@ -140,6 +140,11 @@ void LoRaSetup() {
         while (1);
     }
 
+    LoRa.setSpreadingFactor(12); //6-12
+    LoRa.setSignalBandwidth(125E3);
+    LoRa.setCodingRate4(8);
+    //LoRa.setGain(6); //0-6
+
     //pinMode(SS, OUTPUT);
     //pinMode(RST, OUTPUT);
     //pinMode(DIO0, INPUT);

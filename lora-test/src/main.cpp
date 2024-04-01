@@ -74,8 +74,8 @@ void loop() {
   //display.drawFastImage(0, 0, 128, 64, img_data);
   //display.display();
 
-  delay(7000);
-  while(1);
+  delay(10000);
+  //while(1);
   #endif
   
 }
