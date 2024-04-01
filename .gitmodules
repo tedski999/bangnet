@@ -1,0 +1,21 @@
+[submodule "firmware/sensor/components/arduino"]
+	path = firmware/sensor/components/arduino
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/sensor/components/Adafruit_SSD1306"]
+	path = firmware/sensor/components/Adafruit_SSD1306
+	url = https://github.com/adafruit/Adafruit_SSD1306
+[submodule "firmware/sensor/components/Adafruit-GFX-Library"]
+	path = firmware/sensor/components/Adafruit-GFX-Library
+	url = https://github.com/adafruit/Adafruit-GFX-Library
+[submodule "firmware/sensor/components/Adafruit_BusIO"]
+	path = firmware/sensor/components/Adafruit_BusIO
+	url = https://github.com/adafruit/Adafruit_BusIO
+[submodule "firmware/sensor/components/arduino-LoRa"]
+	path = firmware/sensor/components/arduino-LoRa
+	url = https://github.com/sandeepmistry/arduino-LoRa
+[submodule "firmware/sensor/components/esp32_compressed_delta_ota_update"]
+	path = firmware/sensor/components/esp32_compressed_delta_ota_update
+	url = git@github.com:ESP32-Musings/esp32_compressed_delta_ota_update.git
+[submodule "arduino"]
+	path = firmware/servo-espidf/components/arduino-esp32
+	url = git@github.com:espressif/arduino-esp32.git
