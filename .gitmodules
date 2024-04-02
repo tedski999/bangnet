@@ -16,9 +16,18 @@
 [submodule "firmware/sensor/components/detools/detools"]
 	path = firmware/sensor/components/detools/detools
 	url = https://github.com/eerimoq/detools
-[submodule "firmware/servo-espidf/components/arduino"]
-	path = firmware/servo-espidf/components/arduino-esp32
-	url = https://github.com/espressif/arduino-esp32.git
 [submodule "firmware/sensor/components/arduinoFFT/arduinoFFT"]
 	path = firmware/sensor/components/arduinoFFT/arduinoFFT
 	url = https://github.com/kosme/arduinoFFT
+[submodule "firmware/servo-espidf/components/arduino"]
+	path = firmware/servo-espidf/components/arduino-esp32
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/servo-espidf/components/arduino"]
+	path = firmware/servo-espidf/components/arduino-esp32
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/camera-espidf/components/arduino"]
+	path = firmware/camera-espidf/components/arduino
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient"]
+	path = firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient
+	url = https://github.com/arduino-libraries/ArduinoHttpClient
