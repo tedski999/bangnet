@@ -125,7 +125,7 @@ void work() {
   Serial.print("Image captured");
   Serial.println();
 
-  Serial.println("POSTing image (hopefully)...");
+  Serial.println("POSTing image...");
 
 
   // HTTP upload section adapted from https://randomnerdtutorials.com/esp32-cam-post-image-photo-server/
@@ -160,6 +160,32 @@ void work() {
     }
 
     client.print(tail);
+
+    String getAll;
+    String getBody;
+
+    int timoutTimer = 10000;
+    long startTimer = millis();
+    boolean state = false;
+    
+    while ((startTimer + timoutTimer) > millis()) {
+      Serial.print(".");
+      delay(100);      
+      while (client.available()) {
+        char c = client.read();
+        if (c == '\n') {
+          if (getAll.length()==0) { state=true; }
+          getAll = "";
+        }
+        else if (c != '\r') { getAll += String(c); }
+        if (state==true) { getBody += String(c); }
+        startTimer = millis();
+      }
+      if (getBody.length()>0) { break; }
+    }
+    Serial.println();
+    client.stop();
+    Serial.println(getBody);
   
   }
   else {
