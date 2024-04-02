@@ -2,8 +2,12 @@ name: OTA Patch Build
 
 on:
   push:
-    tags:
-      - '**'
+    branch:
+      - 'ota-patch-generations'
+    # branch:
+      # - 'master'
+    # tags:
+      # - '**'
   workflow_dispatch:
 
 jobs:
@@ -15,11 +19,6 @@ jobs:
         tag: ['v1.0', 'v1.1', 'v1.2'] # TODO: get these from job output which queries github
 
     steps:
-      - uses: actions/setup-python@v2
-        with:
-          python-version: '3.11'
-          cache: 'pip'
-
       - uses: actions/checkout@v3
         with:
           submodules: 'recursive'
