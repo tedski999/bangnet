@@ -20,6 +20,11 @@ extern "C" {
 #define USECS_TO_FRAC (0xFFFFFFFFull / USECS_TO_SEC)
 
 #define MIC_PIN (13)
+#define MIC_SAMPLES (512) //must be 2^x number
+#define MIC_SAMPLE_FREQ (512.0) //2x the expected frequency
+#define MIC_PEAK_SAMPLES (8)
+#define MIC_PEAK_THRESHOLD (1.4)
+#define MIC_COOLDOWN_MSEC (500)
 
 #define OLED_SHOW_MSEC (300 * MSECS_TO_SEC)
 #define OLED_POLL_MSEC (50)
@@ -83,6 +88,8 @@ static uint64_t ntp_time_usec = 0, esp_time_usec = 0; // Time represented as #us
 static bool is_connecting = true; // Are we still trying to connect to WiFi AP
 static bool is_gateway = false; // Is this board a gateway (i.e. connected to WiFi)
 static uint16_t bangs_detected = 0; // How many bangs has the microphone detected since boot
+static double mic_image[OLED_WIDTH]; // TODO
+static double mic_peak_value = 0; // TODO
 static QueueHandle_t ota_queue = NULL; // OTA chunks yet to be broadcasted
 static const esp_partition_t *ota_new_partition = NULL, *ota_old_partition = NULL; // In-progress OTA context
 static esp_ota_handle_t ota_handle; // In-progress OTA data context
@@ -92,42 +99,10 @@ static uint64_t ota_len = 0, ota_idx = 0; // Bytes in and that have been applied
 static uint64_t ota_version = 0; // Firmware version OTA chunks apply to
 static uint64_t version = * (uint64_t *) esp_app_get_description()->app_elf_sha256; // Firmware version
 static uint64_t chip_id = ESP.getEfuseMac(); // Unique ID for sensor
-static bool show_logs = false; // Should OLED show device logs or sensor information
+static uint8_t oled_screen = 0; // Show system status, device logs or sensor information
 static vprintf_like_t log_handler = NULL; // Original ESP32 log handler
 static char log_buf[OLED_BUF_WIDTH * OLED_BUF_HEIGHT] = {}; // Space to store device logs
 static int log_buf_line = 0; // Circular buffer index for log_buf
-
-
-
-
-#define MIC_SAMPLES 512 //must be 2^x number
-#define MIC_SAMPLE_FREQ 512.0 //2x the expected frequency
-#define MIC_PEAK_SAMPLES 8
-#define MIC_PEAK_THRESHOLD 1.4
-#define MIC_XRES 128
-#define MIC_YRES 64
-
-static double peak_record[MIC_PEAK_SAMPLES];
-static byte peak_record_i = 0;
-
-static double mic_reals[MIC_SAMPLES];
-static double mic_imags[MIC_SAMPLES] = {};
-static ArduinoFFT mic_fft = ArduinoFFT(mic_reals, mic_imags, MIC_SAMPLES, MIC_SAMPLE_FREQ);
-
-		double image[MIC_XRES];
-		double peakValue = 0;
-
-#define BANG_POLL_MSEC (200)
-#define BANG_COOLDOWN_MSEC (500)
-#define BANG_THRESHOLD (9999)
-
-
-
-
-
-
-
-
 
 // Stub function for various timer timeouts
 static void timeout_stub(TimerHandle_t timer) {}
@@ -298,7 +273,10 @@ static void oled_task(void *arg)
 		bool is_down = digitalRead(OLED_BUTTON_PIN) == 0;
 		if (is_down && !is_held) {
 			ESP_LOGD("$OLED", "Button down, resetting timer...");
-			if (xTimerIsTimerActive(timer)) show_logs = !show_logs;
+			if (xTimerIsTimerActive(timer)) {
+				oled_screen = (oled_screen + 1) % 3;
+				ESP_LOGD("$OLED", "Screen set to %d", oled_screen);
+			}
 			xTimerReset(timer, portMAX_DELAY);
 			is_held = true;
 		} else if (!is_down) {
@@ -322,9 +300,14 @@ static void oled_task(void *arg)
 
 		if (oled) {
 			oled->clearDisplay();
+			oled->setCursor(0, 0);
 			xSemaphoreTake(lock, portMAX_DELAY);
 
-			if (show_logs) {
+			if (oled_screen == 2) {
+				for (int i = 0; i < OLED_WIDTH; i++) {
+					oled->drawPixel(i, (mic_image[i] / mic_peak_value) * OLED_HEIGHT, SSD1306_INVERSE);
+				}
+			} else if (oled_screen == 1) {
 				for (int i = 0, line = 0; i < OLED_BUF_HEIGHT && line < OLED_BUF_HEIGHT; i++) {
 					char *log = strchr(log_buf + ((log_buf_line + i) % OLED_BUF_HEIGHT) * OLED_BUF_WIDTH, '$');
 					if (log) {
@@ -333,15 +316,13 @@ static void oled_task(void *arg)
 					}
 				}
 			} else {
-				oled->setCursor(0, 0);
 				oled->printf("ID: %llX\n", chip_id);
-				oled->printf("Ver: %llX\n", version);
-				oled->printf("\n");
+				oled->printf("Ver: %llX\n\n", version);
 				if (is_connecting) {
 					oled->printf("Connecting to " WIFI_SSID "...");
 				} else {
 					oled->printf("WiFi: %.16s\n", is_gateway ? WIFI_SSID : "none");
-					oled->printf("Sound: %f (%d)\n", peak_record[peak_record_i], bangs_detected);
+					oled->printf("Sound: %f (%d)\n", mic_peak_value, bangs_detected);
 					oled->printf("=> ");
 					if (esp_time_usec == 0) {
 						oled->printf("not synced\n");
@@ -352,12 +333,6 @@ static void oled_task(void *arg)
 						oled->printf("%f\n", time_sec);
 						oled->fillRect(0, oled->height() - 3, frac_sec * oled->width(), oled->height(), SSD1306_WHITE);
 					}
-
-					// for (int i = 0; i < MIC_XRES; i++) {
-						// double y = (image[i] / peakValue) * MIC_YRES;
-						// oled->drawPixel(i, y, SSD1306_WHITE);
-					// }
-					// oled->printf("%f", );
 				}
 			}
 
@@ -369,67 +344,60 @@ static void oled_task(void *arg)
 	}
 }
 
-
-
-
-
-	// for (int i = 0; i < XRES; i++) {
-	// 	double y = (image[i] / peakValue) * YRES;
-	// 	display->setPixel(i, y);
-	// }
-	// String string = String(peak_record[peak_record_i]);
-
-
 // Detect bangs and push towards cloud
 static void bang_task(void *arg)
 {
 	ESP_LOGI("$BANG", "Starting bang task...");
 
-	TimerHandle_t timer = xTimerCreate("mic_cooldown", BANG_COOLDOWN_MSEC / portTICK_PERIOD_MS, false, NULL, timeout_stub);
+	double mic_peak_record[MIC_PEAK_SAMPLES];
+	byte mic_peak_record_i = 0;
+	double reals[MIC_SAMPLES];
+	double imags[MIC_SAMPLES] = {};
+	ArduinoFFT fft = ArduinoFFT(reals, imags, MIC_SAMPLES, MIC_SAMPLE_FREQ);
+
+	TimerHandle_t timer = xTimerCreate("mic_cooldown", MIC_COOLDOWN_MSEC / portTICK_PERIOD_MS, false, NULL, timeout_stub);
+
 	while (true) {
 		for(int i = 0; i < MIC_SAMPLES; i++) {
-			mic_reals[i] = analogRead(MIC_PIN);
+			reals[i] = analogRead(MIC_PIN);
 			delay(MSECS_TO_SEC / MIC_SAMPLE_FREQ);
 		}
 
-		mic_fft.windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
-		mic_fft.compute(FFT_FORWARD);
-		mic_fft.complexToMagnitude();
-		// double peak = mic_fft.majorPeak();
+		fft.windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+		fft.compute(FFT_FORWARD);
+		fft.complexToMagnitude();
+		// double peak = fft.majorPeak();
 
-		int step = (MIC_SAMPLES/2) / MIC_XRES;
+		int step = (MIC_SAMPLES/2) / OLED_WIDTH;
 		int c = 0;
 		for (int i = 0; i < (MIC_SAMPLES/2); i+=step) {
-			image[c] = 0;
-			for (int k = 0; k < step; k++) {
-				image[c] = image[c] + mic_reals[i+k];
-			}
-			image[c] = image[c] / step;
+			mic_image[c] = 0;
+			for (int k = 0; k < step; k++)
+				mic_image[c] = mic_image[c] + reals[i+k];
+			mic_image[c] = mic_image[c] / step;
 			c++;
 		}
 
 		double some_average = 0;
-		for (int i = 1; i < MIC_XRES; i++) {
-			peakValue = max(peakValue, image[i]);
-			some_average += image[i]/MIC_XRES;
+		for (int i = 1; i < OLED_WIDTH; i++) {
+			mic_peak_value = max(mic_peak_value, mic_image[i]);
+			some_average += mic_image[i]/OLED_WIDTH;
 		}
-		peak_record_i = (peak_record_i+1) % MIC_PEAK_SAMPLES;
-		peak_record[peak_record_i] = some_average;
-		//peak_record[peak_record_i] = peakValue;
+		mic_peak_record_i = (mic_peak_record_i+1) % MIC_PEAK_SAMPLES;
+		mic_peak_record[mic_peak_record_i] = some_average;
+		//mic_peak_record[mic_peak_record_i] = mic_peak_value;
 
 		double average = 0;
 		bool hasZero = false;
 		for (int i = 0; i < MIC_PEAK_SAMPLES; i++) {
-			if (i != peak_record_i) {
-				average += peak_record[i];
-			}
-			if (peak_record[i] == 0) {
+			if (i != mic_peak_record_i)
+				average += mic_peak_record[i];
+			if (mic_peak_record[i] == 0)
 				hasZero = true;
-			}
 		}
 		average = average / (MIC_PEAK_SAMPLES-1);
 
-		if (!xTimerIsTimerActive(timer) && !hasZero && peak_record[peak_record_i] > average*MIC_PEAK_THRESHOLD) {
+		if (!xTimerIsTimerActive(timer) && !hasZero && mic_peak_record[mic_peak_record_i] > average*MIC_PEAK_THRESHOLD) {
 			uint64_t now_usec = ntp_time_usec + esp_timer_get_time() - esp_time_usec;
 			ESP_LOGW("$BANG", "Microphone bang threshold triggered!");
 			xTimerReset(timer, portMAX_DELAY);
@@ -447,8 +415,6 @@ static void bang_task(void *arg)
 			}
 			xSemaphoreGive(lock);
 		}
-
-		delay(BANG_POLL_MSEC);
 	}
 }
 
