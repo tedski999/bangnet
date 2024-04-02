@@ -74,13 +74,18 @@ jobs:
           [ -d ~/builds/${{ github.ref_name }}/servo ] || idf.py --project-dir ${{ github.ref_name }}/firmware/servo --build-dir ~/builds/${{ github.ref_name}}/servo build
           [ -d ~/builds/${{ matrix.tag }}/servo      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/servo      --build-dir ~/builds/${{ matrix.tag }}/servo     build
 
-          # TODO: publish somehow
       - name: Generate OTA Patches
         run: |
+          mkdir -p ~/patches
           pip install detools
-          sensor_sha=$(sha256sum --binary builds/${{ matrix.tag }}/sensor/sensor.elf | head --bytes=16 | tac -rs ..)
-          camera_sha=$(sha256sum --binary builds/${{ matrix.tag }}/camera/camera.elf | head --bytes=16 | tac -rs ..)
-          servo_sha=$(sha256sum --binary builds/${{ matrix.tag }}/servo/servo.elf | head --bytes=16 | tac -rs ..)
-          detools create_patch -c crle builds/${{ matrix.tag }}/sensor/sensor.bin builds/${{ github.ref_name }}/sensor/sensor.bin builds/sensor.${{ github.ref_name }}.patch
-          detools create_patch -c crle builds/${{ matrix.tag }}/camera/camera.bin builds/${{ github.ref_name }}/camera/camera.bin builds/camera.${{ github.ref_name }}.patch
-          detools create_patch -c crle builds/${{ matrix.tag }}/servo/servo.bin builds/${{ github.ref_name }}/servo/servo.bin builds/servo.${{ github.ref_name }}.patch
+          sensor_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/sensor/sensor.elf | head --bytes=16 | tac -rs ..)
+          camera_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/camera/camera.elf | head --bytes=16 | tac -rs ..)
+          servo_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/servo/servo.elf | head --bytes=16 | tac -rs ..)
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/sensor/sensor.bin ~/builds/${{ github.ref_name }}/sensor/sensor.bin ~/patchs/sensor.${sensor_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/camera/camera.bin ~/builds/${{ github.ref_name }}/camera/camera.bin ~/patchs/camera.${camera_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/servo/servo.bin ~/builds/${{ github.ref_name }}/servo/servo.bin ~/patchs/servo.${servo_sha}.patch
+
+      - name: Archive OTA Patches
+        uses: actions/upload-artifact@v4
+        with:
+          path: ~/patches/*.patch
