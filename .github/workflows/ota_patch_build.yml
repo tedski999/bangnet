@@ -1,7 +1,9 @@
 name: OTA Patch Build
 
 on:
-  tags:
+  push:
+    tags:
+      - '**'
   workflow_dispatch:
 
 jobs:
