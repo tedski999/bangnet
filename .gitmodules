@@ -16,6 +16,12 @@
 [submodule "firmware/sensor/components/esp32_compressed_delta_ota_update"]
 	path = firmware/sensor/components/esp32_compressed_delta_ota_update
 	url = git@github.com:ESP32-Musings/esp32_compressed_delta_ota_update.git
-[submodule "arduino"]
+[submodule "firmware/servo-espidf/components/arduino"]
 	path = firmware/servo-espidf/components/arduino-esp32
-	url = git@github.com:espressif/arduino-esp32.git
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/camera-espidf/components/arduino"]
+	path = firmware/camera-espidf/components/arduino
+	url = https://github.com/espressif/arduino-esp32.git
+[submodule "firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient"]
+	path = firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient
+	url = https://github.com/arduino-libraries/ArduinoHttpClient
