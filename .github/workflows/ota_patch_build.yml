@@ -81,9 +81,9 @@ jobs:
           sensor_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/sensor/sensor.elf | head --bytes=16 | tac -rs ..)
           camera_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/camera/camera.elf | head --bytes=16 | tac -rs ..)
           servo_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/servo/servo.elf | head --bytes=16 | tac -rs ..)
-          detools create_patch -c crle ~/builds/${{ matrix.tag }}/sensor/sensor.bin ~/builds/${{ github.ref_name }}/sensor/sensor.bin ~/patchs/sensor.${sensor_sha}.patch
-          detools create_patch -c crle ~/builds/${{ matrix.tag }}/camera/camera.bin ~/builds/${{ github.ref_name }}/camera/camera.bin ~/patchs/camera.${camera_sha}.patch
-          detools create_patch -c crle ~/builds/${{ matrix.tag }}/servo/servo.bin ~/builds/${{ github.ref_name }}/servo/servo.bin ~/patchs/servo.${servo_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/sensor/sensor.bin ~/builds/${{ github.ref_name }}/sensor/sensor.bin ~/patches/sensor.${sensor_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/camera/camera.bin ~/builds/${{ github.ref_name }}/camera/camera.bin ~/patches/camera.${camera_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/servo/servo.bin ~/builds/${{ github.ref_name }}/servo/servo.bin ~/patches/servo.${servo_sha}.patch
 
       - name: Archive OTA Patches
         uses: actions/upload-artifact@v4
