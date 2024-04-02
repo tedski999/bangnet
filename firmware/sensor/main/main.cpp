@@ -2,6 +2,7 @@
 #include <Adafruit_SSD1306.h>
 #include <LoRa.h>
 #include <WiFi.h>
+#include <arduinoFFT.h>
 #include <esp_http_client.h>
 #include <esp_log.h>
 #include <esp_ota_ops.h>
@@ -42,12 +43,8 @@ extern "C" {
 
 #define SYNC_MSEC (10 * MSECS_TO_SEC)
 
-#define PING_MIN_MSEC (30 * MSECS_TO_SEC)
-#define PING_MAX_MSEC (60 * MSECS_TO_SEC)
-
-#define BANG_POLL_MSEC (200)
-#define BANG_COOLDOWN_MSEC (500)
-#define BANG_THRESHOLD (9999)
+#define PING_MIN_MSEC (60 * MSECS_TO_SEC)
+#define PING_MAX_MSEC (120 * MSECS_TO_SEC)
 
 #define WIFI_SSID "msungie"
 #define WIFI_PSWD "hamandcheese"
@@ -92,6 +89,39 @@ static uint64_t ota_version = 0; // Firmware version OTA chunks apply to
 static uint64_t version = * (uint64_t *) esp_app_get_description()->app_elf_sha256; // Firmware version
 static uint64_t chip_id = ESP.getEfuseMac(); // Unique ID for sensor
 
+
+
+
+
+#define MIC_SAMPLES 512 //must be 2^x number
+#define MIC_SAMPLE_FREQ 512.0 //2x the expected frequency
+#define MIC_PEAK_SAMPLES 8
+#define MIC_PEAK_THRESHOLD 1.4
+#define MIC_XRES 128
+#define MIC_YRES 64
+
+static double peak_record[MIC_PEAK_SAMPLES];
+static byte peak_record_i = 0;
+
+static double mic_reals[MIC_SAMPLES];
+static double mic_imags[MIC_SAMPLES] = {};
+static ArduinoFFT mic_fft = ArduinoFFT(mic_reals, mic_imags, MIC_SAMPLES, MIC_SAMPLE_FREQ);
+
+		double image[MIC_XRES];
+		double peakValue = 0;
+
+#define BANG_POLL_MSEC (200)
+#define BANG_COOLDOWN_MSEC (500)
+#define BANG_THRESHOLD (9999)
+
+
+
+
+
+
+
+
+
 // Stub function for various timer timeouts
 static void timeout_stub(TimerHandle_t timer) {}
 
@@ -105,7 +135,7 @@ static void bang_upload(uint64_t id, uint64_t usec)
 	int status_code;
 
 	ESP_LOGW(TAG " BANG", "Uploading bang timestamp to cloud: POST id=%llu time=%llu", id, usec);
-	snprintf(path, sizeof path, "/micro_number?id=%llu&bang_time=%llu", id, usec);
+	snprintf(path, sizeof path, "/api/micro_record/?micro_number=%llu&bang_time=%llu", id, usec);
 	http_config.host = CLOUD_HOST;
 	http_config.port = CLOUD_PORT;
 	http_config.path = path;
@@ -241,7 +271,6 @@ static void oled_task(void *arg)
 	pinMode(OLED_BUTTON_PIN, INPUT_PULLUP);
 
 	while (true) {
-		// TODO: fft
 		if (digitalRead(OLED_BUTTON_PIN) == 0) {
 			ESP_LOGD(TAG " OLED", "Button down, resetting timer...");
 			xTimerReset(timer, portMAX_DELAY);
@@ -286,6 +315,18 @@ static void oled_task(void *arg)
 				} else {
 					oled->printf("no sync\n");
 				}
+
+
+
+
+
+
+
+				for (int i = 0; i < MIC_XRES; i++) {
+					double y = (image[i] / peakValue) * MIC_YRES;
+					oled->drawPixel(i, y, SSD1306_WHITE);
+				}
+				oled->printf("%f", peak_record[peak_record_i]);
 			}
 
 			xSemaphoreGive(lock);
@@ -296,6 +337,17 @@ static void oled_task(void *arg)
 	}
 }
 
+
+
+
+
+	// for (int i = 0; i < XRES; i++) {
+	// 	double y = (image[i] / peakValue) * YRES;
+	// 	display->setPixel(i, y);
+	// }
+	// String string = String(peak_record[peak_record_i]);
+
+
 // Detect bangs and push towards cloud
 static void bang_task(void *arg)
 {
@@ -303,10 +355,49 @@ static void bang_task(void *arg)
 
 	TimerHandle_t timer = xTimerCreate("mic_cooldown", BANG_COOLDOWN_MSEC / portTICK_PERIOD_MS, false, NULL, timeout_stub);
 	while (true) {
-		// TODO(mic)
-		// if (!xTimerIsTimerActive(timer) && analogRead(MIC_PIN) > BANG_THRESHOLD) {
-		if (!xTimerIsTimerActive(timer) && random(400) == 0) {
-		// if (false) {
+		for(int i = 0; i < MIC_SAMPLES; i++) {
+			mic_reals[i] = analogRead(MIC_PIN);
+			delay(MSECS_TO_SEC / MIC_SAMPLE_FREQ);
+		}
+
+		mic_fft.windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
+		mic_fft.compute(FFT_FORWARD);
+		mic_fft.complexToMagnitude();
+		// double peak = mic_fft.majorPeak();
+
+		int step = (MIC_SAMPLES/2) / MIC_XRES;
+		int c = 0;
+		for (int i = 0; i < (MIC_SAMPLES/2); i+=step) {
+			image[c] = 0;
+			for (int k = 0; k < step; k++) {
+				image[c] = image[c] + mic_reals[i+k];
+			}
+			image[c] = image[c] / step;
+			c++;
+		}
+
+		double some_average = 0;
+		for (int i = 1; i < MIC_XRES; i++) {
+			peakValue = max(peakValue, image[i]);
+			some_average += image[i]/MIC_XRES;
+		}
+		peak_record_i = (peak_record_i+1) % MIC_PEAK_SAMPLES;
+		peak_record[peak_record_i] = some_average;
+		//peak_record[peak_record_i] = peakValue;
+
+		double average = 0;
+		bool hasZero = false;
+		for (int i = 0; i < MIC_PEAK_SAMPLES; i++) {
+			if (i != peak_record_i) {
+				average += peak_record[i];
+			}
+			if (peak_record[i] == 0) {
+				hasZero = true;
+			}
+		}
+		average = average / (MIC_PEAK_SAMPLES-1);
+
+		if (!xTimerIsTimerActive(timer) && !hasZero && peak_record[peak_record_i] > average*MIC_PEAK_THRESHOLD) {
 			uint64_t now_usec = ntp_time_usec + esp_timer_get_time() - esp_time_usec;
 			ESP_LOGW(TAG " BANG", "Microphone bang threshold triggered!");
 			xTimerReset(timer, portMAX_DELAY);

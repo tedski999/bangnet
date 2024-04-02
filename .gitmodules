@@ -19,3 +19,6 @@
 [submodule "firmware/servo-espidf/components/arduino"]
 	path = firmware/servo-espidf/components/arduino-esp32
 	url = git@github.com:espressif/arduino-esp32.git
+[submodule "firmware/sensor/components/arduinoFFT/arduinoFFT"]
+	path = firmware/sensor/components/arduinoFFT/arduinoFFT
+	url = https://github.com/kosme/arduinoFFT
