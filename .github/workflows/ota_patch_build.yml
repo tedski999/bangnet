@@ -44,13 +44,35 @@ jobs:
             [ -d ~/esp-idf ] || git clone --recursive -b release/v5.1 https://github.com/espressif/esp-idf.git ~/esp-idf
             ~/esp-idf/install.sh esp32
 
-            # TODO: use secret key
       - name: Build Sensor Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
         run: |
           . ~/esp-idf/export.sh
-          espsecure.py generate_signing_key --version 1 --scheme ecdsa256 firmware/sensor/secure_boot_signing_key.pem
-          [ -d ~/builds/${{ github.ref_name }} ] || idf.py --project-dir ${{ github.ref_name }}/firmware/sensor --build-dir ~/builds/${{ github.ref_name}}/sensor build
-          [ -d ~/builds/${{ matrix.tag }} ]      || idf.py --project-dir ${{ matrix.tag }}/firmware/sensor      --build-dir ~/builds/${{ matrix.tag }}/sensor     build
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/sensor/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/sensor/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/sensor ] || idf.py --project-dir ${{ github.ref_name }}/firmware/sensor --build-dir ~/builds/${{ github.ref_name}}/sensor build
+          [ -d ~/builds/${{ matrix.tag }}/sensor      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/sensor      --build-dir ~/builds/${{ matrix.tag }}/sensor     build
+
+      - name: Build Camera Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          . ~/esp-idf/export.sh
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/camera/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/camera/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/camera ] || idf.py --project-dir ${{ github.ref_name }}/firmware/camera --build-dir ~/builds/${{ github.ref_name}}/camera build
+          [ -d ~/builds/${{ matrix.tag }}/camera      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/camera      --build-dir ~/builds/${{ matrix.tag }}/camera     build
+
+      - name: Build Servo Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          . ~/esp-idf/export.sh
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/servo/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/servo/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/servo ] || idf.py --project-dir ${{ github.ref_name }}/firmware/servo --build-dir ~/builds/${{ github.ref_name}}/servo build
+          [ -d ~/builds/${{ matrix.tag }}/servo      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/servo      --build-dir ~/builds/${{ matrix.tag }}/servo     build
 
           # TODO: publish somehow
       - name: Generate OTA Patches
