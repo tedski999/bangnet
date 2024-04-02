@@ -19,20 +19,26 @@ git clone --recursive -b release/v5.1 https://github.com/espressif/esp-idf.git
 . ./esp-idf/export.sh
 ```
 
-### Running
+### Building Firmware
 
 ```sh
 git clone --recursive https://github.com/tedski999/bangnet.git
-cd bangnet/firmware/sensor
-espsecure.py generate_signing_key --version 1 --scheme ecdsa256 secure_boot_signing_key.pem
-idf.py build
+espsecure.py generate_signing_key --version 1 --scheme ecdsa256 bangnet/firmware/secure_boot_signing_key.pem
+ln -s ../secure_boot_signing_key.pem bangnet/firmware/sensor/secure_boot_signing_key.pem
+ln -s ../secure_boot_signing_key.pem bangnet/firmware/camera/secure_boot_signing_key.pem
+ln -s ../secure_boot_signing_key.pem bangnet/firmware/servo/secure_boot_signing_key.pem
+idf.py --project-dir bangnet/firmware/sensor build
+idf.py --project-dir bangnet/firmware/camera build
+idf.py --project-dir bangnet/firmware/servo build
 ```
 
-### Running
+### Flashing Firmware
 
 ```sh
-idf.py flash monitor
-# Ctrl-] to quit
+idf.py --port /dev/ttyUSBx --project-dir bangnet/firmware/sensor flash
+idf.py --port /dev/ttyUSBy --project-dir bangnet/firmware/camera flash
+idf.py --port /dev/ttyUSBz --project-dir bangnet/firmware/servo flash
+# Attach to serial of sensor: idf.py --port /dev/ttyUSBx monitor
 ```
 
 ## References
