@@ -75,6 +75,7 @@ jobs:
           [ -d ~/builds/${{ matrix.tag }}/servo      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/servo      --build-dir ~/builds/${{ matrix.tag }}/servo     build
 
       - name: Generate OTA Patches
+        id: generate-patches
         run: |
           mkdir -p ~/patches
           pip install detools
@@ -84,8 +85,27 @@ jobs:
           detools create_patch -c crle ~/builds/${{ matrix.tag }}/sensor/sensor.bin ~/builds/${{ github.ref_name }}/sensor/sensor.bin ~/patches/sensor.${sensor_sha}.patch
           detools create_patch -c crle ~/builds/${{ matrix.tag }}/camera/camera.bin ~/builds/${{ github.ref_name }}/camera/camera.bin ~/patches/camera.${camera_sha}.patch
           detools create_patch -c crle ~/builds/${{ matrix.tag }}/servo/servo.bin ~/builds/${{ github.ref_name }}/servo/servo.bin ~/patches/servo.${servo_sha}.patch
+          echo "sensor_sha=${sensor_sha}" >> "$GITHUB_OUTPUT"
+          echo "camera_sha=${camera_sha}" >> "$GITHUB_OUTPUT"
+          echo "servo_sha=${servo_sha}" >> "$GITHUB_OUTPUT"
 
-      - name: Archive OTA Patches
+      - name: Archive Sensor Patch
         uses: actions/upload-artifact@v4
         with:
-          path: ~/patches/*.patch
+          name: sensor.${{ steps.generate-patches.outputs.sensor_sha }}
+          path: ~/patches/sensor.${{ steps.generate-patches.outputs.sensor_sha }}.patch
+          overwrite: true
+
+      - name: Archive Camera Patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: camera.${{ steps.generate-patches.outputs.camera_sha }}
+          path: ~/patches/camera.${{ steps.generate-patches.outputs.camera_sha }}.patch
+          overwrite: true
+
+      - name: Archive Servo Patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: servo.${{ steps.generate-patches.outputs.servo_sha }}
+          path: ~/patches/servo.${{ steps.generate-patches.outputs.servo_sha }}.patch
+          overwrite: true
