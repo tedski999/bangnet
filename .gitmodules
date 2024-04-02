@@ -22,12 +22,15 @@
 [submodule "firmware/servo-espidf/components/arduino"]
 	path = firmware/servo-espidf/components/arduino-esp32
 	url = https://github.com/espressif/arduino-esp32.git
-[submodule "firmware/servo-espidf/components/arduino"]
-	path = firmware/servo-espidf/components/arduino-esp32
-	url = https://github.com/espressif/arduino-esp32.git
 [submodule "firmware/camera-espidf/components/arduino"]
-	path = firmware/camera-espidf/components/arduino
+	path = firmware/camera/components/arduino
 	url = https://github.com/espressif/arduino-esp32.git
 [submodule "firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient"]
-	path = firmware/camera-espidf/components/ArduinoHttpClient/ArduinoHttpClient
+	path = firmware/camera/components/ArduinoHttpClient/ArduinoHttpClient
 	url = https://github.com/arduino-libraries/ArduinoHttpClient
+[submodule "firmware/camera/components/detools/detools"]
+	path = firmware/camera/components/detools/detools
+	url = https://github.com/eerimoq/detools
+[submodule "firmware/servo/components/detools/detools"]
+	path = firmware/servo/components/detools/detools
+	url = https://github.com/eerimoq/detools
