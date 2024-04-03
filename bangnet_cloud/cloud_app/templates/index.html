@@ -137,22 +137,6 @@
         <img src="/media/logo/logo3.webp" width="75" height="75" alt="Image" style="border-radius: 15px; display: inline-block; vertical-align: middle;">
         <h1 style="display: inline-block; vertical-align: middle; margin: 0; padding-left: 25px;">Bang Net Image Display</h1>
     </header>
-    <div style="padding: 25px;">
-        <form id="myForm">
-            <label class="custom-field" >
-                <input type="text" required/>
-                <span class="placeholder">Longitude</span>
-            </label>
-            <div style="padding-top: 25px; padding-bottom: 25px;">
-                <label class="custom-field" >
-                    <input type="text" required/>
-                    <span class="placeholder">Latitude</span>
-                </label>
-            </div>
-            <!-- <input type="text" placeholder="Enter Text"/> -->
-            <button class="button button2" type="button" onclick="clearInputs()">Set New Mic</button>
-        </form>
-    </div>
     <section>
             {% for image_url, timestamp, explosion_coord in image_data %}
                 <div class="image-container">
