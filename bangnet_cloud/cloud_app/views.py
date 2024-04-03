@@ -18,6 +18,7 @@ import requests
 import zipfile
 import io
 import shutil
+from datetime import timedelta
 
 
 # # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -116,8 +117,10 @@ def micro_record(request):
         # json_data = json.loads(request.body.decode('utf-8'))
         request_data = request.GET
 
-        micro_number = int(request_data.get("micro_number"))
-        bang_time = request_data.get("bang_time")
+        micro_number = request_data.get("micro_number")
+        bang_time = int(request_data.get("bang_time"))
+        
+        bang_time = convert_timestamp(bang_time)
 
         if None in [micro_number, bang_time]:
             raise KeyError("One or more parameters are missing")
@@ -136,6 +139,11 @@ def micro_record(request):
         }
 
     return JsonResponse(response)
+
+
+def convert_timestamp(timestamp):
+    NTP_TIMESTAMP_OFFSET = 2208988800
+    return (timestamp / 1_000_000) - NTP_TIMESTAMP_OFFSET
 
 
 @csrf_exempt
