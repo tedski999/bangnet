@@ -1,0 +1,107 @@
+name: OTA Patch Build
+
+on:
+  push:
+    branch:
+      - 'master'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        # tag: ['v1.0', 'v1.1', 'v1.2'] # TODO: get these from job output which queries github
+        tag: ['v1.0']
+
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+          path: ${{ github.ref_name}}
+
+      - uses: actions/checkout@v3
+        with:
+          ref: ${{ matrix.tag }}
+          submodules: 'recursive'
+          path: ${{ matrix.tag }}
+
+      - uses: actions/cache@v3
+        with:
+          path: |
+            ~/esp-idf
+            ~/.espressif
+            ~/builds
+          key: ${{runner.os}}-idf
+
+      - name: Install ESP-IDF
+        run: |
+            [ -d ~/esp-idf ] || git clone --recursive -b release/v5.1 https://github.com/espressif/esp-idf.git ~/esp-idf
+            ~/esp-idf/install.sh esp32
+
+      - name: Build Sensor Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          . ~/esp-idf/export.sh
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/sensor/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/sensor/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/sensor ] || idf.py --project-dir ${{ github.ref_name }}/firmware/sensor --build-dir ~/builds/${{ github.ref_name}}/sensor build
+          [ -d ~/builds/${{ matrix.tag }}/sensor      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/sensor      --build-dir ~/builds/${{ matrix.tag }}/sensor     build
+
+      - name: Build Camera Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          . ~/esp-idf/export.sh
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/camera/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/camera/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/camera ] || idf.py --project-dir ${{ github.ref_name }}/firmware/camera --build-dir ~/builds/${{ github.ref_name}}/camera build
+          [ -d ~/builds/${{ matrix.tag }}/camera      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/camera      --build-dir ~/builds/${{ matrix.tag }}/camera     build
+
+      - name: Build Servo Firmware
+        env:
+          SECURE_BOOT_SIGNING_KEY: ${{ secrets.SECURE_BOOT_SIGNING_KEY }}
+        run: |
+          . ~/esp-idf/export.sh
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ github.ref_name }}/firmware/servo/secure_boot_signing_key.pem
+          echo "$SECURE_BOOT_SIGNING_KEY" > ${{ matrix.tag }}/firmware/servo/secure_boot_signing_key.pem
+          [ -d ~/builds/${{ github.ref_name }}/servo ] || idf.py --project-dir ${{ github.ref_name }}/firmware/servo --build-dir ~/builds/${{ github.ref_name}}/servo build
+          [ -d ~/builds/${{ matrix.tag }}/servo      ] || idf.py --project-dir ${{ matrix.tag }}/firmware/servo      --build-dir ~/builds/${{ matrix.tag }}/servo     build
+
+      - name: Generate OTA Patches
+        id: generate-patches
+        run: |
+          mkdir -p ~/patches
+          pip install detools
+          sensor_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/sensor/sensor.elf | head --bytes=16 | tac -rs ..)
+          camera_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/camera/camera.elf | head --bytes=16 | tac -rs ..)
+          servo_sha=$(sha256sum --binary ~/builds/${{ matrix.tag }}/servo/servo.elf | head --bytes=16 | tac -rs ..)
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/sensor/sensor.bin ~/builds/${{ github.ref_name }}/sensor/sensor.bin ~/patches/sensor.${sensor_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/camera/camera.bin ~/builds/${{ github.ref_name }}/camera/camera.bin ~/patches/camera.${camera_sha}.patch
+          detools create_patch -c crle ~/builds/${{ matrix.tag }}/servo/servo.bin ~/builds/${{ github.ref_name }}/servo/servo.bin ~/patches/servo.${servo_sha}.patch
+          echo "sensor_sha=${sensor_sha}" >> "$GITHUB_OUTPUT"
+          echo "camera_sha=${camera_sha}" >> "$GITHUB_OUTPUT"
+          echo "servo_sha=${servo_sha}" >> "$GITHUB_OUTPUT"
+
+      - name: Archive Sensor Patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: sensor.${{ steps.generate-patches.outputs.sensor_sha }}
+          path: ~/patches/sensor.${{ steps.generate-patches.outputs.sensor_sha }}.patch
+          overwrite: true
+
+      - name: Archive Camera Patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: camera.${{ steps.generate-patches.outputs.camera_sha }}
+          path: ~/patches/camera.${{ steps.generate-patches.outputs.camera_sha }}.patch
+          overwrite: true
+
+      - name: Archive Servo Patch
+        uses: actions/upload-artifact@v4
+        with:
+          name: servo.${{ steps.generate-patches.outputs.servo_sha }}
+          path: ~/patches/servo.${{ steps.generate-patches.outputs.servo_sha }}.patch
+          overwrite: true

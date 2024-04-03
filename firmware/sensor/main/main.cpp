@@ -88,8 +88,8 @@ static uint64_t ntp_time_usec = 0, esp_time_usec = 0; // Time represented as #us
 static bool is_connecting = true; // Are we still trying to connect to WiFi AP
 static bool is_gateway = false; // Is this board a gateway (i.e. connected to WiFi)
 static uint16_t bangs_detected = 0; // How many bangs has the microphone detected since boot
-static double mic_image[OLED_WIDTH]; // TODO
-static double mic_peak_value = 0; // TODO
+static double mic_image[OLED_WIDTH] = {}; // FFT visualisation
+static double mic_peak_value = 0; // FFT visualisation
 static QueueHandle_t ota_queue = NULL; // OTA chunks yet to be broadcasted
 static const esp_partition_t *ota_new_partition = NULL, *ota_old_partition = NULL; // In-progress OTA context
 static esp_ota_handle_t ota_handle; // In-progress OTA data context
@@ -103,6 +103,11 @@ static uint8_t oled_screen = 0; // Show system status, device logs or sensor inf
 static vprintf_like_t log_handler = NULL; // Original ESP32 log handler
 static char log_buf[OLED_BUF_WIDTH * OLED_BUF_HEIGHT] = {}; // Space to store device logs
 static int log_buf_line = 0; // Circular buffer index for log_buf
+
+static double mic_peak_record[MIC_PEAK_SAMPLES];
+static byte mic_peak_record_i = 0;
+static double reals[MIC_SAMPLES] = {};
+static double imags[MIC_SAMPLES] = {};
 
 // Stub function for various timer timeouts
 static void timeout_stub(TimerHandle_t timer) {}
@@ -304,8 +309,12 @@ static void oled_task(void *arg)
 			xSemaphoreTake(lock, portMAX_DELAY);
 
 			if (oled_screen == 2) {
-				for (int i = 0; i < OLED_WIDTH; i++) {
-					oled->drawPixel(i, (mic_image[i] / mic_peak_value) * OLED_HEIGHT, SSD1306_INVERSE);
+				if (mic_peak_value == 0) {
+					oled->printf("Sound is 0!");
+				} else {
+					for (int i = 0; i < OLED_WIDTH; i++) {
+						oled->drawPixel(i, (mic_image[i] / mic_peak_value) * OLED_HEIGHT, SSD1306_WHITE);
+					}
 				}
 			} else if (oled_screen == 1) {
 				for (int i = 0, line = 0; i < OLED_BUF_HEIGHT && line < OLED_BUF_HEIGHT; i++) {
@@ -318,21 +327,20 @@ static void oled_task(void *arg)
 			} else {
 				oled->printf("ID: %llX\n", chip_id);
 				oled->printf("Ver: %llX\n\n", version);
-				if (is_connecting) {
-					oled->printf("Connecting to " WIFI_SSID "...");
-				} else {
+				if (is_connecting)
+					oled->printf("WiFi: ...\n");
+				else
 					oled->printf("WiFi: %.16s\n", is_gateway ? WIFI_SSID : "none");
-					oled->printf("Sound: %f (%d)\n", mic_peak_value, bangs_detected);
-					oled->printf("=> ");
-					if (esp_time_usec == 0) {
-						oled->printf("not synced\n");
-					} else {
-						uint64_t now = ntp_time_usec + esp_timer_get_time() - esp_time_usec;
-						double time_sec = now / (double) USECS_TO_SEC;
-						double frac_sec = time_sec - (int64_t) time_sec;
-						oled->printf("%f\n", time_sec);
-						oled->fillRect(0, oled->height() - 3, frac_sec * oled->width(), oled->height(), SSD1306_WHITE);
-					}
+				oled->printf("Sound: %d (%d)\n", analogRead(MIC_PIN), bangs_detected);
+				oled->printf("=> ");
+				if (esp_time_usec == 0) {
+					oled->printf("not synced\n");
+				} else {
+					uint64_t now = ntp_time_usec + esp_timer_get_time() - esp_time_usec;
+					double time_sec = now / (double) USECS_TO_SEC;
+					double frac_sec = time_sec - (int64_t) time_sec;
+					oled->printf("%f\n", time_sec);
+					oled->fillRect(0, oled->height() - 3, frac_sec * oled->width(), oled->height(), SSD1306_WHITE);
 				}
 			}
 
@@ -349,18 +357,22 @@ static void bang_task(void *arg)
 {
 	ESP_LOGI("$BANG", "Starting bang task...");
 
-	double mic_peak_record[MIC_PEAK_SAMPLES];
-	byte mic_peak_record_i = 0;
-	double reals[MIC_SAMPLES];
-	double imags[MIC_SAMPLES] = {};
 	ArduinoFFT fft = ArduinoFFT(reals, imags, MIC_SAMPLES, MIC_SAMPLE_FREQ);
 
 	TimerHandle_t timer = xTimerCreate("mic_cooldown", MIC_COOLDOWN_MSEC / portTICK_PERIOD_MS, false, NULL, timeout_stub);
 
 	while (true) {
+		unsigned long microSeconds;
+
 		for(int i = 0; i < MIC_SAMPLES; i++) {
+			microSeconds = micros();
+
 			reals[i] = analogRead(MIC_PIN);
-			delay(MSECS_TO_SEC / MIC_SAMPLE_FREQ);
+			imags[i] = 0;
+
+			delay(1);
+			while(micros() < (microSeconds + (1000 * MSECS_TO_SEC) / MIC_SAMPLE_FREQ)) {
+			}
 		}
 
 		fft.windowing(FFT_WIN_TYP_HAMMING, FFT_FORWARD);
@@ -381,11 +393,13 @@ static void bang_task(void *arg)
 		double some_average = 0;
 		for (int i = 1; i < OLED_WIDTH; i++) {
 			mic_peak_value = max(mic_peak_value, mic_image[i]);
+			// mic_peak_value = 1000;
 			some_average += mic_image[i]/OLED_WIDTH;
 		}
 		mic_peak_record_i = (mic_peak_record_i+1) % MIC_PEAK_SAMPLES;
 		mic_peak_record[mic_peak_record_i] = some_average;
 		//mic_peak_record[mic_peak_record_i] = mic_peak_value;
+		mic_peak_value = 2000;
 
 		double average = 0;
 		bool hasZero = false;
@@ -713,7 +727,7 @@ extern "C" void app_main()
 	xTaskCreate(oled_task, "oled", TASK_STACK_SIZE, NULL, TASK_PRIORITY, NULL);
 
 	ESP_LOGW("$MAIN", "Attempting to connecting to local WiFi AP...");
-	if (chip_id == 0x98f078286f24) { // TODO(clean): hardcoded
+	if (chip_id == 0xfc8b66f23a08) { // TODO(clean): hardcoded
 		WiFi.begin(WIFI_SSID, WIFI_PSWD);
 		for (int i = 0; WiFi.status() != WL_CONNECTED && i < 30; i++)
 			delay(1 * MSECS_TO_SEC);
