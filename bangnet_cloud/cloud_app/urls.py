@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import micro_record, upload_image, get_camera_angle, handle_upload, index
+from .views import micro_record, upload_image, get_camera_angle, handle_upload, index, update_patch
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -10,6 +10,7 @@ urlpatterns = [
     #path('occur_bang/', occur_bang, name='occur_bang'),
     path('get_camera_angle/', get_camera_angle, name='get_camera_angle'),
     path('handle_upload/', handle_upload, name='handle_upload'),
+    path('update/', update_patch, name='update_patch'),
 ]
 
 if settings.DEBUG:

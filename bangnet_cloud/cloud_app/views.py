@@ -14,10 +14,15 @@ from pathlib import Path
 import os
 from django.conf import settings
 from django.http import HttpResponse, JsonResponse
+import requests
+import zipfile
+import io
+import shutil
 
 
 # # Build paths inside the project like this: BASE_DIR / 'subdir'.
 from cal_bang_location import get_environment_conditions, TDoALocalization, calculate_bearing
+
 #
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -108,7 +113,7 @@ def handle_upload(request):
 def micro_record(request):
     try:
         db_handler = DatabaseHandler('bangnet_cloud/bangnet.db')
-        #json_data = json.loads(request.body.decode('utf-8'))
+        # json_data = json.loads(request.body.decode('utf-8'))
         request_data = request.GET
 
         micro_number = int(request_data.get("micro_number"))
@@ -202,6 +207,108 @@ def upload_image(request):
     return JsonResponse(response)
 
 
+@csrf_exempt
+@swagger_auto_schema(
+    methods=['GET'],
+    manual_parameters=[
+        openapi.Parameter(
+            name='version',
+            in_=openapi.IN_QUERY,
+            type=openapi.TYPE_STRING,
+            required=True,
+            description='Version ID parameter',
+        ),
+    ],
+    responses={200: 'Patch available and returned successfully', 404: 'Patch not found'}
+)
+@api_view(['GET'])
+def update_patch(request):
+    version_id = request.GET.get('version')
+    if not version_id:
+        return HttpResponseBadRequest('Version ID is required')
+
+    artifact_id = find_sensor_id(version_id)
+    patch_content = None
+    token = ""
+    if artifact_id is not None:
+        patch_content = download_artifact(artifact_id, token)
+
+    if not patch_content:
+        return HttpResponse(status=200)
+    return HttpResponse(patch_content, content_type='text/plain')
+
+
+def download_artifact(artifact_id, token):
+    url = f"https://api.github.com/repos/tedski999/bangnet/actions/artifacts/{artifact_id}/zip"
+    headers = {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github.v3+json"
+    }
+    response = requests.get(url, headers=headers)
+    if response.status_code == 200:
+        with open("artifact.zip", "wb") as f:
+            f.write(response.content)
+        print("Artifact downloaded successfully.")
+        patch_content = extract_and_return_content("artifact.zip")
+        if patch_content:
+            print("Extracted content:")
+            print(patch_content)
+            return patch_content
+        else:
+            print("Failed to extract content.")
+            return None
+    else:
+        print(f"Failed to download artifact. Status code: {response.status_code}")
+        return None
+
+
+def extract_and_return_content(zip_file_path):
+    try:
+        # 创建一个临时目录用于解压缩
+        temp_dir = "temp_extracted"
+        os.makedirs(temp_dir, exist_ok=True)
+
+        # 解压文件
+        with zipfile.ZipFile(zip_file_path, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        # 读取解压后的文件内容
+        extracted_content = None
+        for root, dirs, files in os.walk(temp_dir):
+            for filename in files:
+                file_path = os.path.join(root, filename)
+                with open(file_path, "rb") as file:
+                    extracted_content = file.read()
+                    # 读取第一个文件后立即停止循环
+                    break
+                # 读取文件后，立即退出循环
+                break
+            # 立即停止遍历目录
+            break
+
+        # 删除解压后的目录和原始的 artifact.zip 文件
+        os.remove(zip_file_path)
+        shutil.rmtree(temp_dir)
+
+        return extracted_content
+    except Exception as e:
+        print(f"Failed to extract and return content: {str(e)}")
+        return None
+
+
+
+def find_sensor_id(sensor_name):
+    url = "https://api.github.com/repos/tedski999/bangnet/actions/artifacts"
+    response = requests.get(url)
+    if response.status_code == 200:
+        response_data = response.json()
+        artifacts = response_data.get("artifacts", [])
+        for artifact in artifacts:
+            if artifact.get("name") == sensor_name:
+                return artifact.get("id")
+        return None
+
+
 def occur_bang():
     try:
         db_handler = DatabaseHandler('bangnet_cloud/bangnet.db')
@@ -229,7 +336,8 @@ def occur_bang():
         bang_image_url = get_lasted_image_uploaded(db_handler)
         current_time = datetime.now()
         formatted_time = current_time.strftime("%Y-%m-%d %H:%M:%S")
-        db_handler.insert_data('bang_incidents', (None, f"{estimated_source_position[0]}, {estimated_source_position[1]}", bang_image_url, formatted_time))
+        db_handler.insert_data('bang_incidents', (
+        None, f"{estimated_source_position[0]}, {estimated_source_position[1]}", bang_image_url, formatted_time))
         print("Explosion bearing:", explosion_bearing)
         db_handler.delete_all_data('micros')
         send_to_telegram(
@@ -269,8 +377,9 @@ def get_lasted_image_uploaded(db_handler):
     image_name = split_result.split('/')
     return image_name[len(image_name) - 1]
 
+
 def get_micros_address(mirco_nums):
-    #result = db_handler.select_data('micros', columns=['id', 'micro_number', 'bang_time'])
+    # result = db_handler.select_data('micros', columns=['id', 'micro_number', 'bang_time'])
     # for row in result:
     #     micro_number = row[1]
     #     micro_address = get_address_by_id(micros_addresses, int(micro_number))
